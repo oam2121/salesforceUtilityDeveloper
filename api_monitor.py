@@ -40,8 +40,11 @@ def convert_df_to_csv(df):
 # Function to display API limits in the Streamlit app
 def show_api_tools(sf):
     st.title("Salesforce API Tools")
+    
     st.write("Here you can monitor your API usage and view limits across various resources.")
-
+    st.write("This tool helps you understand your current API usage and limits to ensure you stay within your allocated limits. "
+             "If you exceed these limits, you may experience disruptions in API access.")
+    
     st.header("📊 API Usage and Limits")
     
     limits_data = get_api_limits(sf)
@@ -51,20 +54,19 @@ def show_api_tools(sf):
         
         # Search bar for filtering limits
         search_term = st.text_input("Search for a limit (e.g., 'API Requests')", "")
-
+        st.markdown("**Tip:** Use the search bar to filter the API limits based on keywords. Hover over the information icons for more details.")
+        
         # Filter the limits data based on the search term
         filtered_limits = filter_limits(limits_data, search_term)
 
         if filtered_limits:
             # Display data in table format with background color
-            df = pd.DataFrame([
-                {
-                    'Limit': key,
-                    'Max': value.get('Max', 'N/A'),
-                    'Used': value.get('Max', 0) - value.get('Remaining', 0),
-                    'Remaining': value.get('Remaining', 'N/A')
-                } for key, value in filtered_limits.items()
-            ])
+            df = pd.DataFrame([{
+                'Limit': key,
+                'Max': value.get('Max', 'N/A'),
+                'Used': value.get('Max', 0) - value.get('Remaining', 0),
+                'Remaining': value.get('Remaining', 'N/A')
+            } for key, value in filtered_limits.items()])
             
             # Show DataFrame in a table format with background color
             st.write(df.style.set_properties(**{'background-color': '#f0f2f6', 'color': 'black', 'border-color': 'black'}))
@@ -87,6 +89,8 @@ def show_api_tools(sf):
                 with st.expander(f"{key} (Max: {value.get('Max', 'N/A')})"):
                     st.write(f"**Max:** {value.get('Max', 'N/A')}")
                     st.write(f"**Used:** {value.get('Max', 0) - value.get('Remaining', 0)} / **Remaining:** {value.get('Remaining', 'N/A')}")
+                    # Information icon for additional context
+                    st.info(f"This limit indicates the maximum number of {key.lower()} allowed. If you approach the limit, consider optimizing your API calls to prevent disruptions.")
         else:
             st.warning("No limits found matching your search term.")
     else:
