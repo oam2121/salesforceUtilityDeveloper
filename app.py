@@ -164,10 +164,12 @@ def login():
 
 # Logout function
 def logout():
-    st.session_state['is_authenticated'] = False
-    st.session_state['salesforce'] = None
-    st.session_state['keep_logged_in'] = False
-    clear_user_session_data()
+    # Clear all session state data
+    keys_to_clear = ['is_authenticated', 'salesforce', 'keep_logged_in', 'user_name', 'email']
+    for key in keys_to_clear:
+        if key in st.session_state:
+            del st.session_state[key]
+    clear_user_session_data()  # Clear from database
     st.rerun()
 
 # Check session persistence
@@ -184,6 +186,9 @@ def check_session():
 def main():
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
+        st.session_state['salesforce'] = None
+        st.session_state['user_name'] = ""
+        st.session_state['email'] = ""
 
     # Check for persistent session on page load
     if not st.session_state['is_authenticated'] and check_session():
