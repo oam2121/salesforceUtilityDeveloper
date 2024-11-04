@@ -6,7 +6,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from db_utils import initialize_database, save_user_data, load_user_data, clear_user_session_data
-from db_utils import encrypt_data, get_db_connection, save_user_data
+from db_utils import encrypt_data, get_db_connection
 from authentication import authenticate_salesforce_with_user
 from email_template import generate_email_template  # Import email template
 from streamlit_option_menu import option_menu
@@ -28,7 +28,6 @@ from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
 from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
-
 
 # Load environment variables
 load_dotenv()
@@ -110,15 +109,13 @@ def register_screen_2():
             save_user_data(user_data)
 
             # Update session state
-            st.session_state['is_authenticated'] = False
-            st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']  # Ensure email is saved
+            st.session_state[f'{username}_is_authenticated'] = False
+            st.session_state[f'{username}_user_name'] = user_data['name']
+            st.session_state[f'{username}_email'] = user_data['email']  # Ensure email is saved
 
             st.success("Registration successful! Please login.")
         else:
             st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
-
-
 
 def login():
     st.title("Login")
@@ -136,36 +133,44 @@ def login():
 
     if st.button("Login"):
         if username == user_data.get('username') and password == user_data.get('password') and pin == user_data.get('pin'):
-            st.session_state['is_authenticated'] = True
-            st.session_state['keep_logged_in'] = keep_logged_in
-            st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
-            st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']
+            # Use the username as a unique session key
+            st.session_state[f'{username}_is_authenticated'] = True
+            st.session_state[f'{username}_keep_logged_in'] = keep_logged_in
+            st.session_state[f'{username}_salesforce'] = authenticate_salesforce_with_user(user_data)
+            st.session_state[f'{username}_user_name'] = user_data['name']
+            st.session_state[f'{username}_email'] = user_data['email']
+
             save_user_data(user_data, keep_logged_in=keep_logged_in)
             st.success("Login successful!")
             st.rerun()
         else:
             st.error("Invalid credentials or PIN.")
 
-
-
 # Logout function
 def logout():
-    # Clear all session state data
-    keys_to_clear = ['is_authenticated', 'salesforce', 'keep_logged_in', 'user_name', 'email']
-    for key in keys_to_clear:
-        if key in st.session_state:
-            del st.session_state[key]
-    clear_user_session_data()  # Clear from database
+    user_email = st.session_state.get('email')
+    if user_email:
+        keys_to_clear = [
+            f'{user_email}_is_authenticated',
+            f'{user_email}_salesforce',
+            f'{user_email}_keep_logged_in',
+            f'{user_email}_user_name',
+            f'{user_email}_email'
+        ]
+        for key in keys_to_clear:
+            if key in st.session_state:
+                del st.session_state[key]
+    clear_user_session_data()
     st.rerun()
 
 # Check session persistence
 def check_session():
     user_data = load_user_data()
     if user_data and user_data.get('keep_logged_in'):
-        st.session_state['is_authenticated'] = True
-        st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
-        st.session_state['user_name'] = user_data['name']
+        username = user_data['username']
+        st.session_state[f'{username}_is_authenticated'] = True
+        st.session_state[f'{username}_salesforce'] = authenticate_salesforce_with_user(user_data)
+        st.session_state[f'{username}_user_name'] = user_data['name']
         return True
     return False
 
@@ -173,35 +178,27 @@ def check_session():
 def main():
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
-        st.session_state['salesforce'] = None
-        st.session_state['user_name'] = ""
-        st.session_state['email'] = ""
 
-    # Check for persistent session on page load
     if not st.session_state['is_authenticated'] and check_session():
         st.session_state['is_authenticated'] = True
 
-    # Sidebar navigation
     with st.sidebar:
         st.title("Navigation")
 
         if st.session_state['is_authenticated']:
-            # Display welcome message
             user_name = st.session_state.get('user_name', 'User')
             st.sidebar.write(f"Hello, {user_name}!")
             
-            # Add a logout button below the navigation menu
             if st.sidebar.button("Logout"):
                 logout()
 
-            # Main Menu for authenticated users
             selected_section = option_menu(
                 "Sections", 
                 ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
                 icons=["grid", "briefcase", "fan", "bar-chart-line", "wrench", "gear"],
                 menu_icon="menu-app", default_index=0
             )
-
+            
     # Main area content based on the selected section
     if st.session_state['is_authenticated']:
         sf = st.session_state.get('salesforce')  # Salesforce instance
