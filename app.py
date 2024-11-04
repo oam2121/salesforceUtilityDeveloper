@@ -139,14 +139,16 @@ def register_screen_2():
 def login():
     st.title("Login")
     user_data = load_user_data()
+    
     if not user_data:
         st.error("No registered user found. Please register first.")
         return
 
-    username = st.text_input("Username", value=user_data.get('username', ''))
+    # Do not pre-fill the username field
+    username = st.text_input("Username", value="")  # Empty value to avoid pre-filling
     password = st.text_input("Password", type="password")
     pin = st.text_input("Enter your 6-digit PIN", type="password", max_chars=6)
-    keep_logged_in = st.checkbox("Keep me logged in", value=user_data.get('keep_logged_in', False))
+    keep_logged_in = st.checkbox("Keep me logged in")
 
     if st.button("Login"):
         if username == user_data.get('username') and password == user_data.get('password') and pin == user_data.get('pin'):
@@ -154,12 +156,13 @@ def login():
             st.session_state['keep_logged_in'] = keep_logged_in
             st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
             st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']  # Make sure email is set
+            st.session_state['email'] = user_data['email']
             save_user_data(user_data, keep_logged_in=keep_logged_in)
             st.success("Login successful!")
             st.rerun()
         else:
             st.error("Invalid credentials or PIN.")
+
 
 
 # Logout function
