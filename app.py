@@ -28,6 +28,7 @@ from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
 from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -39,12 +40,15 @@ SMTP_PORT = int(os.getenv("SMTP_PORT"))
 # Initialize the database
 initialize_database()
 
+# Helper function to generate a unique session ID
+def generate_session_id():
+    return str(uuid.uuid4())
+
 # Helper function to send OTP using SendGrid
 def send_otp(email):
     otp = random.randint(100000, 999999)
     st.session_state['otp'] = otp
 
-    # Construct the email message using the template
     message_content = generate_email_template(otp)
     message = MIMEMultipart()
     message["From"] = SENDER_EMAIL
@@ -52,17 +56,16 @@ def send_otp(email):
     message["Subject"] = "Your OTP for Registration"
     message.attach(MIMEText(message_content, "html"))
 
-    # Send the email
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()  # Secure the connection
+            server.starttls()
             server.login("apikey", SENDGRID_API_KEY)
             server.send_message(message)
         st.success("OTP sent to your email.")
     except Exception as e:
         st.error(f"Failed to send OTP: {e}")
 
-# Registration Screen 1: Name, Email, and OTP Verification
+# Registration Screen 1
 def register_screen_1():
     st.title("Register - Step 1")
     name = st.text_input("Full Name", placeholder="Enter your full name")
@@ -94,7 +97,6 @@ def register_screen_2():
 
     if st.button("Register"):
         if st.session_state.get('otp_verified') and len(pin) == 6 and pin.isdigit():
-            # Save user data to `user_data` table
             user_data = {
                 'name': st.session_state['name'],
                 'email': st.session_state['email'],
@@ -108,11 +110,10 @@ def register_screen_2():
             }
             save_user_data(user_data)
 
-            # Update session state
+            st.session_state['session_id'] = generate_session_id()
             st.session_state['is_authenticated'] = False
             st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']  # Ensure email is saved
-
+            st.session_state['email'] = user_data['email']
             st.success("Registration successful! Please login.")
         else:
             st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
@@ -125,69 +126,56 @@ def login():
         st.error("No registered user found. Please register first.")
         return
 
-    # Do not pre-fill the username field
-    username = st.text_input("Username", value="")  # Empty value to avoid pre-filling
+    username = st.text_input("Username", value="")
     password = st.text_input("Password", type="password")
     pin = st.text_input("Enter your 6-digit PIN", type="password", max_chars=6)
     keep_logged_in = st.checkbox("Keep me logged in")
 
     if st.button("Login"):
         if username == user_data.get('username') and password == user_data.get('password') and pin == user_data.get('pin'):
-            # Authenticate and save to session
-            sf_instance = authenticate_salesforce_with_user(user_data)
-            if sf_instance:
-                st.session_state['is_authenticated'] = True
-                st.session_state['salesforce'] = sf_instance
-                st.session_state['user_name'] = user_data['name']
-                st.session_state['email'] = user_data['email']
-                st.session_state['keep_logged_in'] = keep_logged_in
-                save_user_data(user_data, keep_logged_in=keep_logged_in)
-                st.success("Login successful!")
-                st.rerun()
-            else:
-                st.error("Salesforce authentication failed. Please check your credentials.")
+            st.session_state['session_id'] = generate_session_id()
+            st.session_state['is_authenticated'] = True
+            st.session_state['keep_logged_in'] = keep_logged_in
+            st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
+            st.session_state['user_name'] = user_data['name']
+            st.session_state['email'] = user_data['email']
+            save_user_data(user_data, keep_logged_in=keep_logged_in)
+            st.success("Login successful!")
+            st.rerun()
         else:
             st.error("Invalid credentials or PIN.")
 
 # Logout function
 def logout():
-    # Clear all session state data
-    keys_to_clear = ['is_authenticated', 'salesforce', 'keep_logged_in', 'user_name', 'email']
+    keys_to_clear = ['is_authenticated', 'salesforce', 'keep_logged_in', 'user_name', 'email', 'session_id']
     for key in keys_to_clear:
         if key in st.session_state:
             del st.session_state[key]
-    clear_user_session_data()  # Clear from database
+    clear_user_session_data()
     st.rerun()
 
 # Check session persistence
 def check_session():
-    user_data = load_user_data()
-    if user_data and user_data.get('keep_logged_in'):
-        sf_instance = authenticate_salesforce_with_user(user_data)
-        if sf_instance:
-            st.session_state['is_authenticated'] = True
-            st.session_state['salesforce'] = sf_instance
-            st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']
-            return True
+    if 'session_id' in st.session_state and st.session_state['session_id']:
+        return True
     return False
 
 # Main function
 def main():
+    if 'session_id' not in st.session_state:
+        st.session_state['session_id'] = None
+
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
 
-    # Check for persistent session on page load
     if not st.session_state['is_authenticated'] and check_session():
         st.session_state['is_authenticated'] = True
 
     with st.sidebar:
         st.title("Navigation")
-
         if st.session_state['is_authenticated']:
             user_name = st.session_state.get('user_name', 'User')
             st.sidebar.write(f"Hello, {user_name}!")
-            
             if st.sidebar.button("Logout"):
                 logout()
 
@@ -200,12 +188,6 @@ def main():
 
     if st.session_state['is_authenticated']:
         sf = st.session_state.get('salesforce')
-        if sf is None:
-            st.error("Salesforce instance not available. Please log in again.")
-            logout()
-            return
-        
-         # Display "My Orgs" on the main screen
         st.title("Salesforce Developer Utility")
 
 
