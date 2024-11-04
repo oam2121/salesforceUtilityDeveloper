@@ -109,23 +109,6 @@ def register_screen_2():
             }
             save_user_data(user_data)
 
-            # Save Org details to the `orgs` table
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            encrypted_security_token = encrypt_data(security_token)
-
-            cursor.execute('''
-                INSERT INTO orgs (user_email, org_name, username, encrypted_security_token)
-                VALUES (?, ?, ?, ?)
-            ''', (
-                st.session_state['email'],
-                f"{username}-{domain}",  # Example org_name: "username-domain"
-                username,
-                encrypted_security_token
-            ))
-            conn.commit()
-            conn.close()
-
             # Update session state
             st.session_state['is_authenticated'] = False
             st.session_state['user_name'] = user_data['name']
@@ -134,6 +117,7 @@ def register_screen_2():
             st.success("Registration successful! Please login.")
         else:
             st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
+
 
 
 def login():
