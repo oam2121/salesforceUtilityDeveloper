@@ -29,7 +29,6 @@ from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
 from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
-from streamlit_cookies_controller import CookieController  # Correct import for CookieController
 
 # Load environment variables
 load_dotenv()
@@ -41,18 +40,16 @@ SMTP_PORT = int(os.getenv("SMTP_PORT"))
 # Initialize the database
 initialize_database()
 
-# Initialize the CookieController
-cookies = CookieController()
-
 # Helper function to generate a unique session ID
 def generate_session_id():
     return str(uuid.uuid4())
 
-# Helper function to send OTP using SendGrid
+# Function to send OTP using SendGrid
 def send_otp(email):
     otp = random.randint(100000, 999999)
     st.session_state['otp'] = otp
-    message_content = "Your OTP is: {}".format(otp)
+
+    message_content = generate_email_template(otp)
     message = MIMEMultipart()
     message["From"] = SENDER_EMAIL
     message["To"] = email
@@ -62,112 +59,119 @@ def send_otp(email):
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
-            server.login(SENDER_EMAIL, SENDGRID_API_KEY)
+            server.login("apikey", SENDGRID_API_KEY)
             server.send_message(message)
         st.success("OTP sent to your email.")
     except Exception as e:
-        st.error("Failed to send OTP: {}".format(e))
-
-# Save session to cookies
-def save_session_to_cookies():
-    cookies.set('session_id', st.session_state.get('session_id', ''))
-    cookies.set('is_authenticated', st.session_state.get('is_authenticated', False))
-    cookies.set('user_name', st.session_state.get('user_name', ''))
-    cookies.set('email', st.session_state.get('email', ''))
-
-# Load session from cookies
-def load_session_from_cookies():
-    st.session_state['session_id'] = cookies.get('session_id', None)
-    st.session_state['is_authenticated'] = cookies.get('is_authenticated', False)
-    st.session_state['user_name'] = cookies.get('user_name', '')
-    st.session_state['email'] = cookies.get('email', '')
+        st.error(f"Failed to send OTP: {e}")
 
 # Registration Screen 1
 def register_screen_1():
     st.title("Register - Step 1")
-    name = st.text_input("Full Name")
-    email = st.text_input("Email")
+    name = st.text_input("Full Name", placeholder="Enter your full name")
+    email = st.text_input("Email", placeholder="Enter your email address")
 
     if st.button("Send OTP"):
         send_otp(email)
 
-    otp_input = st.text_input("Enter OTP", type="password")
+    otp_input = st.text_input("Enter OTP", type="password", max_chars=6)
     if 'otp' in st.session_state and otp_input:
         if otp_input == str(st.session_state['otp']):
+            st.success("OTP verified successfully!")
             st.session_state['name'] = name
             st.session_state['email'] = email
             st.session_state['otp_verified'] = True
-            register_screen_2()
+            st.rerun()
         else:
-            st.error("Invalid OTP.")
+            st.error("Invalid OTP. Please try again.")
 
 # Registration Screen 2
 def register_screen_2():
     st.title("Register - Step 2")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    username = st.text_input("Salesforce Username")
+    password = st.text_input("Salesforce Password", type="password")
+    security_token = st.text_input("Salesforce Security Token", type="password")
+    client_id = st.text_input("Salesforce Client ID")
+    client_secret = st.text_input("Salesforce Client Secret", type="password")
+    domain = st.selectbox("Salesforce Domain", ["login", "test"])
+    pin = st.text_input("Set a 6-digit PIN", type="password", max_chars=6)
+
     if st.button("Register"):
-        user_data = {
-            'username': username,
-            'password': password,
-            'name': st.session_state['name'],
-            'email': st.session_state['email']
-        }
-        save_user_data(user_data)
-        st.session_state['session_id'] = generate_session_id()
-        st.session_state['is_authenticated'] = True
-        st.session_state['user_name'] = user_data['name']
-        save_session_to_cookies()
-        st.success("Registration successful!")
+        if st.session_state.get('otp_verified') and len(pin) == 6 and pin.isdigit():
+            user_data = {
+                'name': st.session_state['name'],
+                'email': st.session_state['email'],
+                'username': username,
+                'password': password,
+                'security_token': security_token,
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'domain': domain,
+                'pin': pin
+            }
+            save_user_data(user_data)
+
+            st.session_state['session_id'] = generate_session_id()
+            st.session_state['is_authenticated'] = True
+            st.session_state['user_name'] = user_data['name']
+            st.session_state['email'] = user_data['email']
+            st.success("Registration successful! Please login.")
+            st.rerun()
+        else:
+            st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
 
 # Login function
 def login():
     st.title("Login")
-    username = st.text_input("Username")
+    user_data = load_user_data()
+
+    if not user_data:
+        st.error("No registered user found. Please register first.")
+        return
+
+    username = st.text_input("Username", value="")
     password = st.text_input("Password", type="password")
+    pin = st.text_input("Enter your 6-digit PIN", type="password", max_chars=6)
+    keep_logged_in = st.checkbox("Keep me logged in")
+
     if st.button("Login"):
-        user_data = load_user_data(username)
-        if user_data and user_data['password'] == password:
+        if username == user_data.get('username') and password == user_data.get('password') and pin == user_data.get('pin'):
             st.session_state['session_id'] = generate_session_id()
             st.session_state['is_authenticated'] = True
+            st.session_state['keep_logged_in'] = keep_logged_in
+            st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
             st.session_state['user_name'] = user_data['name']
-            save_session_to_cookies()
+            st.session_state['email'] = user_data['email']
+            save_user_data(user_data, keep_logged_in=keep_logged_in)
             st.success("Login successful!")
+            st.rerun()
+        else:
+            st.error("Invalid credentials or PIN.")
 
 # Logout function
 def logout():
-    cookies.delete('session_id')
-    cookies.delete('is_authenticated')
-    cookies.delete('user_name')
-    cookies.delete('email')
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.info("Logged out successfully.")
+    # Clear session data
+    for key in ['session_id', 'is_authenticated', 'user_name', 'email', 'salesforce']:
+        if key in st.session_state:
+            del st.session_state[key]
+    st.rerun()
 
 # Main function
 def main():
-    # Load session data from cookies if available
-    load_session_from_cookies()
-
-    # Initialize session state variables if not already set
+    # Initialize or load session state
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
 
-    # Sidebar navigation setup
+    # Sidebar navigation
     with st.sidebar:
         st.title("Navigation")
-
-        # If the user is authenticated, display the main navigation
         if st.session_state.get('is_authenticated'):
-            # Display a welcome message with the user's name
             user_name = st.session_state.get('user_name', 'User')
             st.sidebar.write(f"Hello, {user_name}!")
-
-            # Logout button
             if st.sidebar.button("Logout"):
                 logout()
 
-            # Main sections menu
+            # Main menu for authenticated users
             selected_section = option_menu(
                 "Sections",
                 ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
@@ -175,7 +179,7 @@ def main():
                 menu_icon="menu-app", default_index=0
             )
 
-            # Handle each section's content
+            # Handle selected sections
             if selected_section == "General":
                 selected_module = option_menu(
                     "General",
@@ -184,11 +188,11 @@ def main():
                     menu_icon="list", default_index=0, orientation="horizontal"
                 )
                 if selected_module == "Home":
-                    display_home(st.session_state['salesforce'])
+                    display_home(st.session_state.get('salesforce'))
                 elif selected_module == "User, Profile, Roles Info":
-                    display_user_info(st.session_state['salesforce'])
+                    display_user_info(st.session_state.get('salesforce'))
                 elif selected_module == "Global Actions":
-                    show_global_actions(st.session_state['salesforce'])
+                    show_global_actions(st.session_state.get('salesforce'))
                 elif selected_module == "How to Use":
                     show_how_to_use()
 
@@ -200,15 +204,15 @@ def main():
                     menu_icon="cloud", default_index=0, orientation="horizontal"
                 )
                 if selected_module == "Query Builder":
-                    show_query_builder(st.session_state['salesforce'])
+                    show_query_builder(st.session_state.get('salesforce'))
                 elif selected_module == "Describe Object":
-                    show_describe_object(st.session_state['salesforce'])
+                    show_describe_object(st.session_state.get('salesforce'))
                 elif selected_module == "Search Salesforce":
-                    show_search_salesforce(st.session_state['salesforce'])
+                    show_search_salesforce(st.session_state.get('salesforce'))
                 elif selected_module == "API Tools":
-                    show_api_tools(st.session_state['salesforce'])
+                    show_api_tools(st.session_state.get('salesforce'))
                 elif selected_module == "Record Hierarchy":
-                    hierarchy_viewer(st.session_state['salesforce'])
+                    hierarchy_viewer(st.session_state.get('salesforce'))
 
             elif selected_section == "SOQL Builder":
                 selected_module = option_menu(
@@ -218,9 +222,9 @@ def main():
                     menu_icon="cloud", default_index=0, orientation="horizontal"
                 )
                 if selected_module == "SOQL Query Runner":
-                    show_soql_query_builder(st.session_state['salesforce'])
+                    show_soql_query_builder(st.session_state.get('salesforce'))
                 elif selected_module == "SOQL BUILDER Parent to Child":
-                    show_advanced_soql_query_builder(st.session_state['salesforce'])
+                    show_advanced_soql_query_builder(st.session_state.get('salesforce'))
 
             elif selected_section == "Visualizations":
                 selected_module = option_menu(
@@ -230,9 +234,9 @@ def main():
                     menu_icon="bar-chart", default_index=0, orientation="horizontal"
                 )
                 if selected_module == "Data Visualizations":
-                    visualize_data(st.session_state['salesforce'])
+                    visualize_data(st.session_state.get('salesforce'))
                 elif selected_module == "Smart Visualize":
-                    smart_visualize(st.session_state['salesforce'])
+                    smart_visualize(st.session_state.get('salesforce'))
 
             elif selected_section == "Admin Tools":
                 selected_module = option_menu(
@@ -242,11 +246,11 @@ def main():
                     menu_icon="tools", default_index=0, orientation="horizontal"
                 )
                 if selected_module == "Data Import/Export":
-                    show_data_import_export(st.session_state['salesforce'])
+                    show_data_import_export(st.session_state.get('salesforce'))
                 elif selected_module == "Scheduled Jobs Viewer":
-                    view_scheduled_jobs(st.session_state['salesforce'])
+                    view_scheduled_jobs(st.session_state.get('salesforce'))
                 elif selected_module == "Audit Logs Viewer":
-                    view_audit_logs(st.session_state['salesforce'])
+                    view_audit_logs(st.session_state.get('salesforce'))
 
             elif selected_section == "Help & Settings":
                 selected_module = option_menu(
@@ -259,7 +263,6 @@ def main():
                     show_how_to_use()
                 elif selected_module == "Logout":
                     logout()
-
         else:
             # Menu for non-authenticated users
             selected_module = option_menu(
