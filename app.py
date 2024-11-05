@@ -29,7 +29,8 @@ from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
 from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
-from streamlit_cookies_manager import CookiesManager  # Using a cookies manager package
+from streamlit_cookies_controller import CookieController  # Correct import for CookieController
+
 
 # Load environment variables
 load_dotenv()
@@ -41,13 +42,28 @@ SMTP_PORT = int(os.getenv("SMTP_PORT"))
 # Initialize the database
 initialize_database()
 
-# Initialize cookies manager
-cookies = CookiesManager()
+# Initialize the CookieController
+cookies = CookieController()
 
 # Helper function to generate a unique session ID
 def generate_session_id():
-    
     return str(uuid.uuid4())
+
+# Function to save session data in cookies
+def save_session_to_cookies():
+    cookies.set('session_id', st.session_state.get('session_id', ''))
+    cookies.set('is_authenticated', st.session_state.get('is_authenticated', False))
+    cookies.set('user_name', st.session_state.get('user_name', ''))
+    cookies.set('email', st.session_state.get('email', ''))
+    cookies.save()  # Save the cookies
+
+# Function to load session data from cookies
+def load_session_from_cookies():
+    if cookies.get('session_id'):
+        st.session_state['session_id'] = cookies.get('session_id')
+        st.session_state['is_authenticated'] = cookies.get('is_authenticated', False)
+        st.session_state['user_name'] = cookies.get('user_name', '')
+        st.session_state['email'] = cookies.get('email', '')
 
 # Helper function to send OTP using SendGrid
 def send_otp(email):
@@ -69,22 +85,6 @@ def send_otp(email):
         st.success("OTP sent to your email.")
     except Exception as e:
         st.error(f"Failed to send OTP: {e}")
-
-# Function to save session data in cookies
-def save_session_to_cookies():
-    cookies['session_id'] = st.session_state.get('session_id', '')
-    cookies['is_authenticated'] = st.session_state.get('is_authenticated', False)
-    cookies['user_name'] = st.session_state.get('user_name', '')
-    cookies['email'] = st.session_state.get('email', '')
-    cookies.save()
-
-# Function to load session data from cookies
-def load_session_from_cookies():
-    if 'session_id' in cookies and 'is_authenticated' in cookies:
-        st.session_state['session_id'] = cookies.get('session_id', None)
-        st.session_state['is_authenticated'] = cookies.get('is_authenticated', False)
-        st.session_state['user_name'] = cookies.get('user_name', '')
-        st.session_state['email'] = cookies.get('email', '')
 
 # Registration Screen 1
 def register_screen_1():
@@ -173,12 +173,11 @@ def login():
 
 # Logout function
 def logout():
-    # Clear session data from cookies and Streamlit session state
-    cookies.delete('session_id')
-    cookies.delete('is_authenticated')
-    cookies.delete('user_name')
-    cookies.delete('email')
-    cookies.save()
+    cookies.remove('session_id')
+    cookies.remove('is_authenticated')
+    cookies.remove('user_name')
+    cookies.remove('email')
+    cookies.save()  # Save the updated cookies
 
     for key in ['session_id', 'is_authenticated', 'user_name', 'email', 'salesforce']:
         if key in st.session_state:
