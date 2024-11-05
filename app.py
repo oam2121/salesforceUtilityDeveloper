@@ -10,6 +10,7 @@ from db_utils import encrypt_data, get_db_connection
 from authentication import authenticate_salesforce_with_user
 from email_template import generate_email_template
 from streamlit_option_menu import option_menu
+import uuid
 
 # Import other modules
 from smart_visualize import smart_visualize
@@ -28,7 +29,6 @@ from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
 from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
-import uuid
 
 # Load environment variables
 load_dotenv()
@@ -85,6 +85,7 @@ def register_screen_1():
         else:
             st.error("Invalid OTP. Please try again.")
 
+# Registration Screen 2
 def register_screen_2():
     st.title("Register - Step 2")
     username = st.text_input("Salesforce Username")
@@ -118,6 +119,7 @@ def register_screen_2():
         else:
             st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
 
+# Login function
 def login():
     st.title("Login")
     user_data = load_user_data()
@@ -189,7 +191,6 @@ def main():
     if st.session_state['is_authenticated']:
         sf = st.session_state.get('salesforce')
         st.title("Salesforce Developer Utility")
-
 
         # Display content in the main area
         if selected_section == "General":
