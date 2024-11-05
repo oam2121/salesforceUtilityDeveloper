@@ -6,7 +6,6 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from db_utils import initialize_database, save_user_data, load_user_data, clear_user_session_data
-from db_utils import encrypt_data, get_db_connection
 from authentication import authenticate_salesforce_with_user
 from email_template import generate_email_template
 from streamlit_option_menu import option_menu
@@ -44,7 +43,17 @@ initialize_database()
 def generate_session_id():
     return str(uuid.uuid4())
 
-# Function to send OTP using SendGrid
+# Function to load session data
+def load_session_from_db():
+    user_data = load_user_data()
+    if user_data and user_data.get('keep_logged_in'):
+        st.session_state['session_id'] = user_data.get('session_id', None)
+        st.session_state['is_authenticated'] = True
+        st.session_state['user_name'] = user_data.get('name', '')
+        st.session_state['email'] = user_data.get('email', '')
+        st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
+
+# Helper function to send OTP using SendGrid
 def send_otp(email):
     otp = random.randint(100000, 999999)
     st.session_state['otp'] = otp
@@ -107,7 +116,8 @@ def register_screen_2():
                 'client_id': client_id,
                 'client_secret': client_secret,
                 'domain': domain,
-                'pin': pin
+                'pin': pin,
+                'keep_logged_in': True  # Default to keeping the user logged in
             }
             save_user_data(user_data)
 
@@ -150,7 +160,7 @@ def login():
 
 # Logout function
 def logout():
-    # Clear session data
+    clear_user_session_data()
     for key in ['session_id', 'is_authenticated', 'user_name', 'email', 'salesforce']:
         if key in st.session_state:
             del st.session_state[key]
@@ -158,20 +168,19 @@ def logout():
 
 # Main function
 def main():
-    # Initialize or load session state
+    load_session_from_db()
+
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
 
-    # Sidebar navigation
     with st.sidebar:
-        st.title("Navigation")
+        st.title("Menu")
         if st.session_state.get('is_authenticated'):
             user_name = st.session_state.get('user_name', 'User')
             st.sidebar.write(f"Hello, {user_name}!")
             if st.sidebar.button("Logout"):
                 logout()
 
-            # Main menu for authenticated users
             selected_section = option_menu(
                 "Sections",
                 ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
@@ -179,94 +188,96 @@ def main():
                 menu_icon="menu-app", default_index=0
             )
 
-            # Handle selected sections
-            if selected_section == "General":
-                selected_module = option_menu(
-                    "General",
-                    ["Home", "User, Profile, Roles Info", "Global Actions", "How to Use"],
-                    icons=["house", "person", "app-indicator", "info-circle"],
-                    menu_icon="list", default_index=0, orientation="horizontal"
-                )
-                if selected_module == "Home":
-                    display_home(st.session_state.get('salesforce'))
-                elif selected_module == "User, Profile, Roles Info":
-                    display_user_info(st.session_state.get('salesforce'))
-                elif selected_module == "Global Actions":
-                    show_global_actions(st.session_state.get('salesforce'))
-                elif selected_module == "How to Use":
-                    show_how_to_use()
+            # Render content in the main area
+            with st.container():
+                if selected_section == "General":
+                    selected_module = option_menu(
+                        "General",
+                        ["Home", "User, Profile, Roles Info", "Global Actions", "How to Use"],
+                        icons=["house", "person", "app-indicator", "info-circle"],
+                        menu_icon="list", default_index=0, orientation="horizontal"
+                    )
+                    if selected_module == "Home":
+                        display_home(st.session_state.get('salesforce'))
+                    elif selected_module == "User, Profile, Roles Info":
+                        display_user_info(st.session_state.get('salesforce'))
+                    elif selected_module == "Global Actions":
+                        show_global_actions(st.session_state.get('salesforce'))
+                    elif selected_module == "How to Use":
+                        show_how_to_use()
 
-            elif selected_section == "Salesforce Tools":
-                selected_module = option_menu(
-                    "Salesforce Tools",
-                    ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
-                    icons=["wrench", "book", "search", "gear", "bezier"],
-                    menu_icon="cloud", default_index=0, orientation="horizontal"
-                )
-                if selected_module == "Query Builder":
-                    show_query_builder(st.session_state.get('salesforce'))
-                elif selected_module == "Describe Object":
-                    show_describe_object(st.session_state.get('salesforce'))
-                elif selected_module == "Search Salesforce":
-                    show_search_salesforce(st.session_state.get('salesforce'))
-                elif selected_module == "API Tools":
-                    show_api_tools(st.session_state.get('salesforce'))
-                elif selected_module == "Record Hierarchy":
-                    hierarchy_viewer(st.session_state.get('salesforce'))
+                elif selected_section == "Salesforce Tools":
+                    selected_module = option_menu(
+                        "Salesforce Tools",
+                        ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
+                        icons=["wrench", "book", "search", "gear", "bezier"],
+                        menu_icon="cloud", default_index=0, orientation="horizontal"
+                    )
+                    if selected_module == "Query Builder":
+                        show_query_builder(st.session_state.get('salesforce'))
+                    elif selected_module == "Describe Object":
+                        show_describe_object(st.session_state.get('salesforce'))
+                    elif selected_module == "Search Salesforce":
+                        show_search_salesforce(st.session_state.get('salesforce'))
+                    elif selected_module == "API Tools":
+                        show_api_tools(st.session_state.get('salesforce'))
+                    elif selected_module == "Record Hierarchy":
+                        hierarchy_viewer(st.session_state.get('salesforce'))
 
-            elif selected_section == "SOQL Builder":
-                selected_module = option_menu(
-                    "SOQL Builder",
-                    ["SOQL Query Runner", "SOQL BUILDER Parent to Child"],
-                    icons=["hurricane", "cpu"],
-                    menu_icon="cloud", default_index=0, orientation="horizontal"
-                )
-                if selected_module == "SOQL Query Runner":
-                    show_soql_query_builder(st.session_state.get('salesforce'))
-                elif selected_module == "SOQL BUILDER Parent to Child":
-                    show_advanced_soql_query_builder(st.session_state.get('salesforce'))
+                elif selected_section == "SOQL Builder":
+                    selected_module = option_menu(
+                        "SOQL Builder",
+                        ["SOQL Query Runner", "SOQL BUILDER Parent to Child"],
+                        icons=["hurricane", "cpu"],
+                        menu_icon="cloud", default_index=0, orientation="horizontal"
+                    )
+                    if selected_module == "SOQL Query Runner":
+                        show_soql_query_builder(st.session_state.get('salesforce'))
+                    elif selected_module == "SOQL BUILDER Parent to Child":
+                        show_advanced_soql_query_builder(st.session_state.get('salesforce'))
 
-            elif selected_section == "Visualizations":
-                selected_module = option_menu(
-                    "Visualizations",
-                    ["Data Visualizations", "Smart Visualize"],
-                    icons=["bar-chart", "tv"],
-                    menu_icon="bar-chart", default_index=0, orientation="horizontal"
-                )
-                if selected_module == "Data Visualizations":
-                    visualize_data(st.session_state.get('salesforce'))
-                elif selected_module == "Smart Visualize":
-                    smart_visualize(st.session_state.get('salesforce'))
+                elif selected_section == "Visualizations":
+                    selected_module = option_menu(
+                        "Visualizations",
+                        ["Data Visualizations", "Smart Visualize"],
+                        icons=["bar-chart", "tv"],
+                        menu_icon="bar-chart", default_index=0, orientation="horizontal"
+                    )
+                    if selected_module == "Data Visualizations":
+                        visualize_data(st.session_state.get('salesforce'))
+                    elif selected_module == "Smart Visualize":
+                        smart_visualize(st.session_state.get('salesforce'))
 
-            elif selected_section == "Admin Tools":
-                selected_module = option_menu(
-                    "Admin Tools",
-                    ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
-                    icons=["upload", "clock", "book"],
-                    menu_icon="tools", default_index=0, orientation="horizontal"
-                )
-                if selected_module == "Data Import/Export":
-                    show_data_import_export(st.session_state.get('salesforce'))
-                elif selected_module == "Scheduled Jobs Viewer":
-                    view_scheduled_jobs(st.session_state.get('salesforce'))
-                elif selected_module == "Audit Logs Viewer":
-                    view_audit_logs(st.session_state.get('salesforce'))
+                elif selected_section == "Admin Tools":
+                    selected_module = option_menu(
+                        "Admin Tools",
+                        ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
+                        icons=["upload", "clock", "book"],
+                        menu_icon="tools", default_index=0, orientation="horizontal"
+                    )
+                    if selected_module == "Data Import/Export":
+                        show_data_import_export(st.session_state.get('salesforce'))
+                    elif selected_module == "Scheduled Jobs Viewer":
+                        view_scheduled_jobs(st.session_state.get('salesforce'))
+                    elif selected_module == "Audit Logs Viewer":
+                        view_audit_logs(st.session_state.get('salesforce'))
 
-            elif selected_section == "Help & Settings":
-                selected_module = option_menu(
-                    "Help & Settings",
-                    ["How to Use", "Logout"],
-                    icons=["info-circle", "box-arrow-right"],
-                    menu_icon="question-circle", default_index=0, orientation="horizontal"
-                )
-                if selected_module == "How to Use":
-                    show_how_to_use()
-                elif selected_module == "Logout":
-                    logout()
+                elif selected_section == "Help & Settings":
+                    selected_module = option_menu(
+                        "Help & Settings",
+                        ["How to Use", "Logout"],
+                        icons=["info-circle", "box-arrow-right"],
+                        menu_icon="question-circle", default_index=0, orientation="horizontal"
+                    )
+                    if selected_module == "How to Use":
+                        show_how_to_use()
+                    elif selected_module == "Logout":
+                        logout()
+
         else:
             # Menu for non-authenticated users
             selected_module = option_menu(
-                "Authentication Menu",
+                "Menu",
                 ["Login", "Register - Step 1", "How to Use"],
                 icons=["box-arrow-in-right", "person-plus", "info-circle"],
                 menu_icon="lock", default_index=0
