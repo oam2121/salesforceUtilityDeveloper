@@ -19,6 +19,10 @@ from api_monitor import show_api_tools  # Importing the API Tools functionality
 from record_hier import hierarchy_viewer
 from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
+from soql_query_builder_p_c import show_advanced_soql_query_builder
+from global_actions import show_global_actions
+
+
 USER_DATA_FILE = 'user_data.json'
 # Function to save user data persistently to a JSON file
 def save_user_data(user_data, keep_logged_in=False):
@@ -101,6 +105,7 @@ def check_session():
         st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
         return True
     return False
+
 # Main function
 def main():
     if 'is_authenticated' not in st.session_state:
@@ -114,17 +119,17 @@ def main():
         if st.session_state['is_authenticated']:
             # Main Menu for logged-in users
             selected_section = option_menu(
-                "Sections", 
-                ["General", "Salesforce Tools", "Visualizations", "Admin Tools", "Help & Settings"],
-                icons=["grid", "briefcase", "bar-chart-line", "wrench", "gear"],
+                "Sections",
+                ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
+                icons=["grid", "briefcase", "fan", "bar-chart-line", "wrench", "gear"],
                 menu_icon="menu-app", default_index=0
             )
             # Nested menu based on the selected section
             if selected_section == "General":
                 selected_module = option_menu(
                     "General", 
-                    ["Home", "User, Profile, Roles Info", "How to Use"],
-                    icons=["house", "person", "info-circle"],
+                    ["Home", "User, Profile, Roles Info", "Global Actions", "How to Use"],
+                    icons=["house", "person", "app-indicator", "info-circle"],
                     menu_icon="list", default_index=0
                 )
             elif selected_section == "Salesforce Tools":
@@ -134,6 +139,15 @@ def main():
                     icons=["wrench", "book", "search", "gear", "tree"],
                     menu_icon="cloud", default_index=0
                 )
+            
+            elif selected_section == "SOQL Builder":
+                selected_module = option_menu(
+                    "SOQL Builder", 
+                    ["SOQL Builder Child to Parent","SOQL BUILDER Parent to Child"],
+                    icons=["hurricane", "cpu"],
+                    menu_icon="cloud", default_index=0
+                )
+                
             elif selected_section == "Visualizations":
                 selected_module = option_menu(
                     "Visualizations", 
@@ -183,7 +197,10 @@ def main():
             'Data Import/Export': show_data_import_export,
             'Scheduled Jobs Viewer': view_scheduled_jobs,
             'Audit Logs Viewer': view_audit_logs,
-            'SOQL Builder':show_soql_query_builder,
+            'SOQL Builder Child to Parent':show_soql_query_builder,
+            'Global Actions':show_global_actions,
+            'SOQL BUILDER Parent to Child':show_advanced_soql_query_builder,
+            'User, Profile, Roles Info':display_user_info
         }
         modules_without_sf = {
             'How to Use': show_how_to_use
