@@ -81,7 +81,7 @@ def register_screen_1():
             st.session_state['name'] = name
             st.session_state['email'] = email
             st.session_state['otp_verified'] = True
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid OTP. Please try again.")
 
@@ -116,7 +116,7 @@ def register_screen_2():
             st.session_state['user_name'] = user_data['name']
             st.session_state['email'] = user_data['email']
             st.success("Registration successful! Please login.")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
 
@@ -145,7 +145,7 @@ def login():
             st.session_state['email'] = user_data['email']
             save_user_data(user_data, keep_logged_in=keep_logged_in)
             st.success("Login successful!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid credentials or PIN.")
 
@@ -156,7 +156,7 @@ def logout():
     for key in keys_to_clear:
         if key in st.session_state:
             del st.session_state[key]
-    st.experimental_rerun()
+    st.rerun()
 
 # Check if a session is valid
 def check_session():
