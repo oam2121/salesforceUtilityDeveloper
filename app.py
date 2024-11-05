@@ -46,6 +46,7 @@ cookies = CookiesManager()
 
 # Helper function to generate a unique session ID
 def generate_session_id():
+    
     return str(uuid.uuid4())
 
 # Helper function to send OTP using SendGrid
