@@ -31,7 +31,6 @@ from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
 from streamlit_cookies_controller import CookieController  # Correct import for CookieController
 
-
 # Load environment variables
 load_dotenv()
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
@@ -55,7 +54,7 @@ def save_session_to_cookies():
     cookies.set('is_authenticated', st.session_state.get('is_authenticated', False))
     cookies.set('user_name', st.session_state.get('user_name', ''))
     cookies.set('email', st.session_state.get('email', ''))
-    cookies.save()  # Save the cookies
+    # Removed the cookies.save() call
 
 # Function to load session data from cookies
 def load_session_from_cookies():
@@ -177,7 +176,6 @@ def logout():
     cookies.remove('is_authenticated')
     cookies.remove('user_name')
     cookies.remove('email')
-    cookies.save()  # Save the updated cookies
 
     for key in ['session_id', 'is_authenticated', 'user_name', 'email', 'salesforce']:
         if key in st.session_state:
