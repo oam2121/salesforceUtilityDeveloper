@@ -1,19 +1,12 @@
 import streamlit as st
-import random
+import threading
+import json
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from dotenv import load_dotenv
-from db_utils import initialize_database, save_user_data, load_user_data, clear_user_session_data
-from authentication import authenticate_salesforce_with_user
-from email_template import generate_email_template
 from streamlit_option_menu import option_menu
-import uuid
-
-# Import other modules
 from smart_visualize import smart_visualize
-from how_to_use import show_how_to_use
+from how_to_use import show_how_to_use  # Import the how to use page
+from authentication import authenticate_salesforce_with_user
+# Importing other module functions
 from query_builder import show_query_builder
 from data_import_export import show_data_import_export
 from describe_object import show_describe_object
@@ -22,81 +15,29 @@ from data_visualizations import visualize_data
 from scheduled_jobs import view_scheduled_jobs
 from audit_logs import view_audit_logs
 from home import display_home
-from api_monitor import show_api_tools
+from api_monitor import show_api_tools  # Importing the API Tools functionality
 from record_hier import hierarchy_viewer
 from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
-from soql_query_builder_p_c import show_advanced_soql_query_builder
-from global_actions import show_global_actions
-
-# Load environment variables
-load_dotenv()
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT"))
-
-# Initialize the database
-initialize_database()
-
-# Helper function to generate a unique session ID
-def generate_session_id():
-    return str(uuid.uuid4())
-
-# Function to load session data
-def load_session_from_db():
-    user_data = load_user_data()
-    if user_data and user_data.get('keep_logged_in'):
-        st.session_state['session_id'] = user_data.get('session_id', None)
-        st.session_state['is_authenticated'] = True
-        st.session_state['user_name'] = user_data.get('name', '')
-        st.session_state['email'] = user_data.get('email', '')
-        st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
-
-# Helper function to send OTP using SendGrid
-def send_otp(email):
-    otp = random.randint(100000, 999999)
-    st.session_state['otp'] = otp
-
-    message_content = generate_email_template(otp)
-    message = MIMEMultipart()
-    message["From"] = SENDER_EMAIL
-    message["To"] = email
-    message["Subject"] = "Your OTP for Registration"
-    message.attach(MIMEText(message_content, "html"))
-
-    try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login("apikey", SENDGRID_API_KEY)
-            server.send_message(message)
-        st.success("OTP sent to your email.")
-    except Exception as e:
-        st.error(f"Failed to send OTP: {e}")
-
-# Registration Screen 1
-def register_screen_1():
-    st.title("Register - Step 1")
-    name = st.text_input("Full Name", placeholder="Enter your full name")
-    email = st.text_input("Email", placeholder="Enter your email address")
-
-    if st.button("Send OTP"):
-        send_otp(email)
-
-    otp_input = st.text_input("Enter OTP", type="password", max_chars=6)
-    if 'otp' in st.session_state and otp_input:
-        if otp_input == str(st.session_state['otp']):
-            st.success("OTP verified successfully!")
-            st.session_state['name'] = name
-            st.session_state['email'] = email
-            st.session_state['otp_verified'] = True
-            st.rerun()
-        else:
-            st.error("Invalid OTP. Please try again.")
-
-# Registration Screen 2
-def register_screen_2():
-    st.title("Register - Step 2")
+USER_DATA_FILE = 'user_data.json'
+# Function to save user data persistently to a JSON file
+def save_user_data(user_data, keep_logged_in=False):
+    user_data['keep_logged_in'] = keep_logged_in
+    with open(USER_DATA_FILE, 'w') as f:
+        json.dump(user_data, f)
+# Function to load user data from the JSON file
+def load_user_data():
+    if os.path.exists(USER_DATA_FILE):
+        with open(USER_DATA_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+# Function to clear saved user data (used on logout)
+def clear_user_data():
+    if os.path.exists(USER_DATA_FILE):
+        os.remove(USER_DATA_FILE)
+# Registration page
+def register():
+    st.title("Register")
     username = st.text_input("Salesforce Username")
     password = st.text_input("Salesforce Password", type="password")
     security_token = st.text_input("Salesforce Security Token", type="password")
@@ -104,194 +45,161 @@ def register_screen_2():
     client_secret = st.text_input("Salesforce Client Secret", type="password")
     domain = st.selectbox("Salesforce Domain", ["login", "test"])
     pin = st.text_input("Set a 6-digit PIN", type="password", max_chars=6)
-
     if st.button("Register"):
-        if st.session_state.get('otp_verified') and len(pin) == 6 and pin.isdigit():
+        if len(pin) == 6 and pin.isdigit():
             user_data = {
-                'name': st.session_state['name'],
-                'email': st.session_state['email'],
                 'username': username,
                 'password': password,
                 'security_token': security_token,
                 'client_id': client_id,
                 'client_secret': client_secret,
                 'domain': domain,
-                'pin': pin,
-                'keep_logged_in': True  # Default to keeping the user logged in
+                'pin': pin
             }
             save_user_data(user_data)
-
-            st.session_state['session_id'] = generate_session_id()
-            st.session_state['is_authenticated'] = True
-            st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']
             st.success("Registration successful! Please login.")
-            st.rerun()
+            st.session_state['is_authenticated'] = False
         else:
-            st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
-
-# Login function
+            st.error("PIN must be 6 digits.")
+# Login page
 def login():
     st.title("Login")
     user_data = load_user_data()
-
     if not user_data:
         st.error("No registered user found. Please register first.")
         return
-
-    username = st.text_input("Username", value="")
-    password = st.text_input("Password", type="password")
+    username = st.text_input("Username", value=user_data.get('username', ''))
+    password = st.text_input("Password", type="password", value=user_data.get('password', ''))
     pin = st.text_input("Enter your 6-digit PIN", type="password", max_chars=6)
-    keep_logged_in = st.checkbox("Keep me logged in")
-
+    # Add a toggle to keep the user logged in
+    keep_logged_in = st.checkbox("Keep me logged in", value=user_data.get('keep_logged_in', False))
     if st.button("Login"):
         if username == user_data.get('username') and password == user_data.get('password') and pin == user_data.get('pin'):
-            st.session_state['session_id'] = generate_session_id()
             st.session_state['is_authenticated'] = True
-            st.session_state['keep_logged_in'] = keep_logged_in
+            st.session_state['keep_logged_in'] = keep_logged_in  # Store the toggle state
+            # Authenticate Salesforce instance and store it in session state
             st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
-            st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']
+            
+            # Save user data with the "Keep me logged in" option
             save_user_data(user_data, keep_logged_in=keep_logged_in)
             st.success("Login successful!")
-            st.rerun()
+            st.rerun()  # Rerun to refresh state
         else:
             st.error("Invalid credentials or PIN.")
-
 # Logout function
 def logout():
-    clear_user_session_data()
-    for key in ['session_id', 'is_authenticated', 'user_name', 'email', 'salesforce']:
-        if key in st.session_state:
-            del st.session_state[key]
+    st.session_state['is_authenticated'] = False
+    st.session_state['salesforce'] = None
+    st.session_state['keep_logged_in'] = False
+    clear_user_data()
     st.rerun()
-
+# Check if user session should persist after refresh
+def check_session():
+    user_data = load_user_data()
+    if user_data and user_data.get('keep_logged_in'):
+        st.session_state['is_authenticated'] = True
+        st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
+        return True
+    return False
 # Main function
 def main():
-    load_session_from_db()
-
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
-
+    # Check for persistent session on page load
+    if not st.session_state['is_authenticated'] and check_session():
+        st.session_state['is_authenticated'] = True
+    # Sidebar navigation
     with st.sidebar:
-        st.title("Menu")
-        if st.session_state.get('is_authenticated'):
-            user_name = st.session_state.get('user_name', 'User')
-            st.sidebar.write(f"Hello, {user_name}!")
-            if st.sidebar.button("Logout"):
-                logout()
-
+        st.title("Navigation")
+        if st.session_state['is_authenticated']:
+            # Main Menu for logged-in users
             selected_section = option_menu(
-                "Sections",
-                ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
-                icons=["grid", "briefcase", "fan", "bar-chart-line", "wrench", "gear"],
+                "Sections", 
+                ["General", "Salesforce Tools", "Visualizations", "Admin Tools", "Help & Settings"],
+                icons=["grid", "briefcase", "bar-chart-line", "wrench", "gear"],
                 menu_icon="menu-app", default_index=0
             )
-
-            # Render content in the main area
-            with st.container():
-                if selected_section == "General":
-                    selected_module = option_menu(
-                        "General",
-                        ["Home", "User, Profile, Roles Info", "Global Actions", "How to Use"],
-                        icons=["house", "person", "app-indicator", "info-circle"],
-                        menu_icon="list", default_index=0, orientation="horizontal"
-                    )
-                    if selected_module == "Home":
-                        display_home(st.session_state.get('salesforce'))
-                    elif selected_module == "User, Profile, Roles Info":
-                        display_user_info(st.session_state.get('salesforce'))
-                    elif selected_module == "Global Actions":
-                        show_global_actions(st.session_state.get('salesforce'))
-                    elif selected_module == "How to Use":
-                        show_how_to_use()
-
-                elif selected_section == "Salesforce Tools":
-                    selected_module = option_menu(
-                        "Salesforce Tools",
-                        ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
-                        icons=["wrench", "book", "search", "gear", "bezier"],
-                        menu_icon="cloud", default_index=0, orientation="horizontal"
-                    )
-                    if selected_module == "Query Builder":
-                        show_query_builder(st.session_state.get('salesforce'))
-                    elif selected_module == "Describe Object":
-                        show_describe_object(st.session_state.get('salesforce'))
-                    elif selected_module == "Search Salesforce":
-                        show_search_salesforce(st.session_state.get('salesforce'))
-                    elif selected_module == "API Tools":
-                        show_api_tools(st.session_state.get('salesforce'))
-                    elif selected_module == "Record Hierarchy":
-                        hierarchy_viewer(st.session_state.get('salesforce'))
-
-                elif selected_section == "SOQL Builder":
-                    selected_module = option_menu(
-                        "SOQL Builder",
-                        ["SOQL Query Runner", "SOQL BUILDER Parent to Child"],
-                        icons=["hurricane", "cpu"],
-                        menu_icon="cloud", default_index=0, orientation="horizontal"
-                    )
-                    if selected_module == "SOQL Query Runner":
-                        show_soql_query_builder(st.session_state.get('salesforce'))
-                    elif selected_module == "SOQL BUILDER Parent to Child":
-                        show_advanced_soql_query_builder(st.session_state.get('salesforce'))
-
-                elif selected_section == "Visualizations":
-                    selected_module = option_menu(
-                        "Visualizations",
-                        ["Data Visualizations", "Smart Visualize"],
-                        icons=["bar-chart", "tv"],
-                        menu_icon="bar-chart", default_index=0, orientation="horizontal"
-                    )
-                    if selected_module == "Data Visualizations":
-                        visualize_data(st.session_state.get('salesforce'))
-                    elif selected_module == "Smart Visualize":
-                        smart_visualize(st.session_state.get('salesforce'))
-
-                elif selected_section == "Admin Tools":
-                    selected_module = option_menu(
-                        "Admin Tools",
-                        ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
-                        icons=["upload", "clock", "book"],
-                        menu_icon="tools", default_index=0, orientation="horizontal"
-                    )
-                    if selected_module == "Data Import/Export":
-                        show_data_import_export(st.session_state.get('salesforce'))
-                    elif selected_module == "Scheduled Jobs Viewer":
-                        view_scheduled_jobs(st.session_state.get('salesforce'))
-                    elif selected_module == "Audit Logs Viewer":
-                        view_audit_logs(st.session_state.get('salesforce'))
-
-                elif selected_section == "Help & Settings":
-                    selected_module = option_menu(
-                        "Help & Settings",
-                        ["How to Use", "Logout"],
-                        icons=["info-circle", "box-arrow-right"],
-                        menu_icon="question-circle", default_index=0, orientation="horizontal"
-                    )
-                    if selected_module == "How to Use":
-                        show_how_to_use()
-                    elif selected_module == "Logout":
-                        logout()
-
+            # Nested menu based on the selected section
+            if selected_section == "General":
+                selected_module = option_menu(
+                    "General", 
+                    ["Home", "User, Profile, Roles Info", "How to Use"],
+                    icons=["house", "person", "info-circle"],
+                    menu_icon="list", default_index=0
+                )
+            elif selected_section == "Salesforce Tools":
+                selected_module = option_menu(
+                    "Salesforce Tools", 
+                    ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","SOQL Builder"],
+                    icons=["wrench", "book", "search", "gear", "tree"],
+                    menu_icon="cloud", default_index=0
+                )
+            elif selected_section == "Visualizations":
+                selected_module = option_menu(
+                    "Visualizations", 
+                    ["Data Visualizations", "Smart Visualize"],
+                    icons=["bar-chart"],
+                    menu_icon="bar-chart", default_index=0
+                )
+            elif selected_section == "Admin Tools":
+                selected_module = option_menu(
+                    "Admin Tools", 
+                    ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
+                    icons=["upload", "clock", "book"],
+                    menu_icon="tools", default_index=0
+                )
+            elif selected_section == "Help & Settings":
+                selected_module = option_menu(
+                    "Help & Settings", 
+                    ["How to Use", "Logout"],
+                    icons=["info-circle", "box-arrow-right"],
+                    menu_icon="question-circle", default_index=0
+                )
+                
+            # Logout button
+            if st.button("Logout", on_click=logout):
+                st.session_state['is_authenticated'] = False
         else:
             # Menu for non-authenticated users
             selected_module = option_menu(
-                "Menu",
-                ["Login", "Register - Step 1", "How to Use"],
+                "Authentication Menu", 
+                ["Login", "Register", "How to Use"],
                 icons=["box-arrow-in-right", "person-plus", "info-circle"],
                 menu_icon="lock", default_index=0
             )
-            if selected_module == "Login":
-                login()
-            elif selected_module == "Register - Step 1":
-                if st.session_state.get('otp_verified'):
-                    register_screen_2()
-                else:
-                    register_screen_1()
-            elif selected_module == "How to Use":
-                show_how_to_use()
-
-# Main entry point
+    # Display corresponding content based on the selected option
+    if st.session_state['is_authenticated']:
+        # If the user is authenticated, load the selected module
+        sf = st.session_state.get('salesforce')
+        modules_with_sf = {
+            'Home': display_home,  
+            'Query Builder': show_query_builder,
+            'Describe Object': show_describe_object,
+            'Search Salesforce': show_search_salesforce,
+            'API Tools': show_api_tools,
+            'Record Hierarchy': hierarchy_viewer,
+            'Data Visualizations': visualize_data,
+            'Smart Visualize': smart_visualize,  # Background Dash App for Smart Visualize
+            'Data Import/Export': show_data_import_export,
+            'Scheduled Jobs Viewer': view_scheduled_jobs,
+            'Audit Logs Viewer': view_audit_logs,
+            'SOQL Builder':show_soql_query_builder,
+        }
+        modules_without_sf = {
+            'How to Use': show_how_to_use
+        }
+        # Run the selected module with or without `sf` depending on the function requirements
+        if selected_module in modules_with_sf:
+            modules_with_sf[selected_module](sf)  # Requires Salesforce connection
+        elif selected_module in modules_without_sf:
+            modules_without_sf[selected_module]()  # Does not require Salesforce connection
+    else:
+        # If the user is not authenticated, show either login, register form, or the "How to Use" page
+        if selected_module == "Login":
+            login()
+        elif selected_module == "Register":
+            register()
+        elif selected_module == "How to Use":
+            show_how_to_use()
 if __name__ == "__main__":
     main()
