@@ -111,6 +111,7 @@ def register_screen_2():
             }
             save_user_data(user_data)
 
+            # Generate a unique session ID for the current session
             st.session_state['session_id'] = generate_session_id()
             st.session_state['is_authenticated'] = False
             st.session_state['user_name'] = user_data['name']
@@ -135,6 +136,7 @@ def login():
 
     if st.button("Login"):
         if username == user_data.get('username') and password == user_data.get('password') and pin == user_data.get('pin'):
+            # Generate a unique session ID for this login session
             st.session_state['session_id'] = generate_session_id()
             st.session_state['is_authenticated'] = True
             st.session_state['keep_logged_in'] = keep_logged_in
@@ -149,15 +151,16 @@ def login():
 
 # Logout function
 def logout():
+    # Clear only the current session's state
     keys_to_clear = ['is_authenticated', 'salesforce', 'keep_logged_in', 'user_name', 'email', 'session_id']
     for key in keys_to_clear:
         if key in st.session_state:
             del st.session_state[key]
-    clear_user_session_data()
     st.rerun()
 
-# Check session persistence
+# Check if a session is valid
 def check_session():
+    # Check if the session ID exists in the current session state
     if 'session_id' in st.session_state and st.session_state['session_id']:
         return True
     return False
@@ -170,6 +173,7 @@ def main():
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
 
+    # Check if the session is valid
     if not st.session_state['is_authenticated'] and check_session():
         st.session_state['is_authenticated'] = True
 
