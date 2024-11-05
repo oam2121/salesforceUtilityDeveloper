@@ -48,28 +48,11 @@ cookies = CookieController()
 def generate_session_id():
     return str(uuid.uuid4())
 
-# Function to save session data in cookies
-def save_session_to_cookies():
-    cookies.set('session_id', st.session_state.get('session_id', ''))
-    cookies.set('is_authenticated', st.session_state.get('is_authenticated', False))
-    cookies.set('user_name', st.session_state.get('user_name', ''))
-    cookies.set('email', st.session_state.get('email', ''))
-    # Removed the cookies.save() call
-
-# Function to load session data from cookies
-def load_session_from_cookies():
-    if cookies.get('session_id'):
-        st.session_state['session_id'] = cookies.get('session_id')
-        st.session_state['is_authenticated'] = cookies.get('is_authenticated', False)
-        st.session_state['user_name'] = cookies.get('user_name', '')
-        st.session_state['email'] = cookies.get('email', '')
-
 # Helper function to send OTP using SendGrid
 def send_otp(email):
     otp = random.randint(100000, 999999)
     st.session_state['otp'] = otp
-
-    message_content = generate_email_template(otp)
+    message_content = "Your OTP is: {}".format(otp)
     message = MIMEMultipart()
     message["From"] = SENDER_EMAIL
     message["To"] = email
@@ -79,124 +62,112 @@ def send_otp(email):
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.starttls()
-            server.login("apikey", SENDGRID_API_KEY)
+            server.login(SENDER_EMAIL, SENDGRID_API_KEY)
             server.send_message(message)
         st.success("OTP sent to your email.")
     except Exception as e:
-        st.error(f"Failed to send OTP: {e}")
+        st.error("Failed to send OTP: {}".format(e))
+
+# Save session to cookies
+def save_session_to_cookies():
+    cookies.set('session_id', st.session_state.get('session_id', ''))
+    cookies.set('is_authenticated', st.session_state.get('is_authenticated', False))
+    cookies.set('user_name', st.session_state.get('user_name', ''))
+    cookies.set('email', st.session_state.get('email', ''))
+
+# Load session from cookies
+def load_session_from_cookies():
+    st.session_state['session_id'] = cookies.get('session_id', None)
+    st.session_state['is_authenticated'] = cookies.get('is_authenticated', False)
+    st.session_state['user_name'] = cookies.get('user_name', '')
+    st.session_state['email'] = cookies.get('email', '')
 
 # Registration Screen 1
 def register_screen_1():
     st.title("Register - Step 1")
-    name = st.text_input("Full Name", placeholder="Enter your full name")
-    email = st.text_input("Email", placeholder="Enter your email address")
+    name = st.text_input("Full Name")
+    email = st.text_input("Email")
 
     if st.button("Send OTP"):
         send_otp(email)
 
-    otp_input = st.text_input("Enter OTP", type="password", max_chars=6)
+    otp_input = st.text_input("Enter OTP", type="password")
     if 'otp' in st.session_state and otp_input:
         if otp_input == str(st.session_state['otp']):
-            st.success("OTP verified successfully!")
             st.session_state['name'] = name
             st.session_state['email'] = email
             st.session_state['otp_verified'] = True
-            st.rerun()
+            register_screen_2()
         else:
-            st.error("Invalid OTP. Please try again.")
+            st.error("Invalid OTP.")
 
 # Registration Screen 2
 def register_screen_2():
     st.title("Register - Step 2")
-    username = st.text_input("Salesforce Username")
-    password = st.text_input("Salesforce Password", type="password")
-    security_token = st.text_input("Salesforce Security Token", type="password")
-    client_id = st.text_input("Salesforce Client ID")
-    client_secret = st.text_input("Salesforce Client Secret", type="password")
-    domain = st.selectbox("Salesforce Domain", ["login", "test"])
-    pin = st.text_input("Set a 6-digit PIN", type="password", max_chars=6)
-
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
     if st.button("Register"):
-        if st.session_state.get('otp_verified') and len(pin) == 6 and pin.isdigit():
-            user_data = {
-                'name': st.session_state['name'],
-                'email': st.session_state['email'],
-                'username': username,
-                'password': password,
-                'security_token': security_token,
-                'client_id': client_id,
-                'client_secret': client_secret,
-                'domain': domain,
-                'pin': pin
-            }
-            save_user_data(user_data)
-
-            st.session_state['session_id'] = generate_session_id()
-            st.session_state['is_authenticated'] = True
-            st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']
-            save_session_to_cookies()
-            st.success("Registration successful! Please login.")
-            st.rerun()
-        else:
-            st.error("Please complete the OTP verification and ensure the PIN is 6 digits.")
+        user_data = {
+            'username': username,
+            'password': password,
+            'name': st.session_state['name'],
+            'email': st.session_state['email']
+        }
+        save_user_data(user_data)
+        st.session_state['session_id'] = generate_session_id()
+        st.session_state['is_authenticated'] = True
+        st.session_state['user_name'] = user_data['name']
+        save_session_to_cookies()
+        st.success("Registration successful!")
 
 # Login function
 def login():
     st.title("Login")
-    user_data = load_user_data()
-
-    if not user_data:
-        st.error("No registered user found. Please register first.")
-        return
-
-    username = st.text_input("Username", value="")
+    username = st.text_input("Username")
     password = st.text_input("Password", type="password")
-    pin = st.text_input("Enter your 6-digit PIN", type="password", max_chars=6)
-    keep_logged_in = st.checkbox("Keep me logged in")
-
     if st.button("Login"):
-        if username == user_data.get('username') and password == user_data.get('password') and pin == user_data.get('pin'):
+        user_data = load_user_data(username)
+        if user_data and user_data['password'] == password:
             st.session_state['session_id'] = generate_session_id()
             st.session_state['is_authenticated'] = True
-            st.session_state['keep_logged_in'] = keep_logged_in
-            st.session_state['salesforce'] = authenticate_salesforce_with_user(user_data)
             st.session_state['user_name'] = user_data['name']
-            st.session_state['email'] = user_data['email']
-            save_user_data(user_data, keep_logged_in=keep_logged_in)
             save_session_to_cookies()
             st.success("Login successful!")
-            st.rerun()
-        else:
-            st.error("Invalid credentials or PIN.")
 
 # Logout function
 def logout():
-    cookies.remove('session_id')
-    cookies.remove('is_authenticated')
-    cookies.remove('user_name')
-    cookies.remove('email')
-
-    for key in ['session_id', 'is_authenticated', 'user_name', 'email', 'salesforce']:
-        if key in st.session_state:
-            del st.session_state[key]
-    st.rerun()
+    cookies.delete('session_id')
+    cookies.delete('is_authenticated')
+    cookies.delete('user_name')
+    cookies.delete('email')
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.info("Logged out successfully.")
 
 # Main function
 def main():
+    # Load session data from cookies if available
     load_session_from_cookies()
 
+    # Initialize session state variables if not already set
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
 
+    # Sidebar navigation setup
     with st.sidebar:
         st.title("Navigation")
+
+        # If the user is authenticated, display the main navigation
         if st.session_state.get('is_authenticated'):
+            # Display a welcome message with the user's name
             user_name = st.session_state.get('user_name', 'User')
             st.sidebar.write(f"Hello, {user_name}!")
+
+            # Logout button
             if st.sidebar.button("Logout"):
                 logout()
 
+            # Main sections menu
             selected_section = option_menu(
                 "Sections",
                 ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
@@ -204,7 +175,7 @@ def main():
                 menu_icon="menu-app", default_index=0
             )
 
-            # Display content in the main area based on the selected section
+            # Handle each section's content
             if selected_section == "General":
                 selected_module = option_menu(
                     "General",
@@ -288,6 +259,7 @@ def main():
                     show_how_to_use()
                 elif selected_module == "Logout":
                     logout()
+
         else:
             # Menu for non-authenticated users
             selected_module = option_menu(
