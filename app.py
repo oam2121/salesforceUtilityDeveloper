@@ -29,7 +29,7 @@ from authentication import authenticate_salesforce_with_user
 # Initialize the database
 init_db()
 
-# Registration page
+# Function to handle registration
 def register():
     st.title("Register")
     username = st.text_input("Salesforce Username")
@@ -49,7 +49,7 @@ def register():
         else:
             st.error("PIN must be 6 digits.")
 
-# Login page
+# Function to handle login
 def login():
     st.title("Login")
     username = st.text_input("Username")
@@ -60,13 +60,21 @@ def login():
         if verify_user(username, password, pin):
             st.session_state['is_authenticated'] = True
             st.session_state['user_data'] = get_user_data(username)
-            st.session_state['salesforce'] = authenticate_salesforce_with_user(st.session_state['user_data'])
-            st.success("Login successful!")
-            st.experimental_rerun()  # Refresh state
+            
+            # Ensure password is stored in session state for Salesforce authentication
+            st.session_state['user_data']['password'] = password
+            
+            try:
+                st.session_state['salesforce'] = authenticate_salesforce_with_user(st.session_state['user_data'])
+                st.success("Login successful!")
+                st.experimental_rerun()
+            except Exception as e:
+                st.error(f"Salesforce authentication failed: {e}")
+                st.session_state['is_authenticated'] = False
         else:
             st.error("Invalid username, password, or PIN.")
 
-# Logout function
+# Function to handle logout
 def logout():
     st.session_state['is_authenticated'] = False
     st.session_state['user_data'] = None
@@ -75,15 +83,19 @@ def logout():
 
 # Main function
 def main():
-    # Initialize session state
+    # Initialize session state variables
     if 'is_authenticated' not in st.session_state:
         st.session_state['is_authenticated'] = False
+    if 'user_data' not in st.session_state:
+        st.session_state['user_data'] = None
+    if 'salesforce' not in st.session_state:
+        st.session_state['salesforce'] = None
 
     # Sidebar navigation
     with st.sidebar:
         st.title("Navigation")
         if st.session_state['is_authenticated']:
-            # Main menu for logged-in users
+            # Main menu for authenticated users
             selected_section = option_menu(
                 "Sections",
                 ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
@@ -134,9 +146,10 @@ def main():
                     icons=["info-circle", "box-arrow-right"],
                     menu_icon="question-circle", default_index=0
                 )
+
             # Logout button
-            if st.button("Logout", on_click=logout):
-                st.session_state['is_authenticated'] = False
+            if selected_module == "Logout":
+                logout()
 
         else:
             # Menu for non-authenticated users
@@ -146,10 +159,15 @@ def main():
                 icons=["box-arrow-in-right", "person-plus", "info-circle"],
                 menu_icon="lock", default_index=0
             )
+            if selected_module == "Login":
+                login()
+            elif selected_module == "Register":
+                register()
+            elif selected_module == "How to Use":
+                show_how_to_use()
 
     # Display content based on the selected option
     if st.session_state['is_authenticated']:
-        # Modules requiring authentication
         modules_with_sf = {
             'Home': display_home,
             'Query Builder': show_query_builder,
@@ -163,7 +181,6 @@ def main():
             'Scheduled Jobs Viewer': view_scheduled_jobs,
             'Audit Logs Viewer': view_audit_logs,
             'SOQL Builder Child to Parent': show_soql_query_builder,
-            'Global Actions': show_global_actions,
             'SOQL BUILDER Parent to Child': show_advanced_soql_query_builder,
             'User, Profile, Roles Info': display_user_info
         }
@@ -172,17 +189,13 @@ def main():
         }
 
         if selected_module in modules_with_sf:
-            modules_with_sf[selected_module](st.session_state['salesforce'])
+            try:
+                modules_with_sf[selected_module](st.session_state['salesforce'])
+            except KeyError:
+                st.error("Salesforce session not found. Please log in again.")
+                logout()
         elif selected_module in modules_without_sf:
             modules_without_sf[selected_module]()
-    else:
-        # Non-authenticated pages
-        if selected_module == "Login":
-            login()
-        elif selected_module == "Register":
-            register()
-        elif selected_module == "How to Use":
-            show_how_to_use()
 
 if __name__ == "__main__":
     main()
