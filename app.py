@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 # Initialize database
 init_db()
 
-password = st.secrets.get("general", {}).get("COOKIE_PASSWORD")
+password = st.secrets.get("COOKIE_PASSWORD")
 if not password:
     st.error("COOKIE_PASSWORD is not set in Streamlit Secrets!")
     st.stop()
