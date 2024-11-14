@@ -138,8 +138,8 @@ def main():
             # Show options for authenticated users
             selected_section = option_menu(
                 "Sections",
-                ["Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
-                icons=["briefcase", "fan", "bar-chart-line", "wrench", "gear"],
+                ["Home", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
+                icons=["house", "briefcase", "fan", "bar-chart-line", "wrench", "gear"],
                 menu_icon="menu-app", default_index=0
             )
         else:
@@ -154,7 +154,12 @@ def main():
     # Main Content Area
     if st.session_state["is_authenticated"]:
         # Handle authenticated user modules
-        if selected_section == "Salesforce Tools":
+        if selected_section == "Home":
+            # Import and display the home dashboard
+            from home import display_home
+            display_home(st.session_state["salesforce"])
+
+        elif selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
                 ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
@@ -230,6 +235,7 @@ def main():
             register()
         elif selected_section == "How to Use":
             show_how_to_use()
+
 
 if __name__ == "__main__":
     main()
