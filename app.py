@@ -23,17 +23,14 @@ from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
 
 # Initialize the database
-st.write("Initializing the database...")
 init_db()
 
-# Temporarily hardcoded password for debugging purposes
-PASSWORD = "TemporarySecurePassword123!"  # Replace with your production secret
-st.write("Setting up cookie manager...")
+# Hardcoded password for cookie manager
+PASSWORD = "TemporarySecurePassword123!"  # Replace with a secure password in production
 
-# Initialize the cookie manager
+# Initialize cookie manager
 cookies = EncryptedCookieManager(prefix="salesforce_app_", password=PASSWORD)
 if not cookies.ready():
-    st.error("Cookies are not ready. Stopping app.")
     st.stop()
 
 # Initialize session state
@@ -45,17 +42,16 @@ def initialize_session():
     if "salesforce" not in st.session_state:
         st.session_state["salesforce"] = None
 
-    # Restore authentication from cookies if available
+    # Restore authentication from cookies
     if cookies.get("is_authenticated") == "true":
         st.session_state["is_authenticated"] = True
         user_data = cookies.get("user_data")
         if user_data:
             st.session_state["user_data"] = eval(user_data)
-        st.write("Session restored from cookies.")
 
 initialize_session()
 
-# Function to handle registration
+# Registration Page
 def register():
     st.title("Register")
     username = st.text_input("Salesforce Username")
@@ -75,7 +71,7 @@ def register():
         else:
             st.error("PIN must be exactly 6 digits.")
 
-# Function to handle login
+# Login Page
 def login():
     st.title("Login")
     username = st.text_input("Username")
@@ -97,14 +93,14 @@ def login():
                 cookies.save()
 
                 st.success("Login successful!")
-                st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"Salesforce authentication failed: {e}")
                 st.session_state["is_authenticated"] = False
         else:
             st.error("Invalid username, password, or PIN.")
 
-# Function to handle logout
+# Logout Function
 def logout():
     st.session_state["is_authenticated"] = False
     st.session_state["user_data"] = None
@@ -115,114 +111,108 @@ def logout():
     cookies["user_data"] = ""
     cookies.save()
 
-    st.experimental_rerun()
+    st.rerun()
 
-# Main application
+# Main Application
 def main():
-    # Sidebar navigation
+    # Sidebar Navigation
     with st.sidebar:
-        st.title("Navigation")
-
         if st.session_state["is_authenticated"]:
-            # Authenticated User Menu
+            # Show options for authenticated users
             selected_section = option_menu(
                 "Sections",
                 ["Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
                 icons=["briefcase", "fan", "bar-chart-line", "wrench", "gear"],
                 menu_icon="menu-app", default_index=0
             )
-
-            # Nested Menus
-            if selected_section == "Salesforce Tools":
-                selected_module = option_menu(
-                    "Salesforce Tools",
-                    ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
-                    icons=["wrench", "book", "search", "gear", "tree"],
-                    menu_icon="cloud", default_index=0
-                )
-                # Call relevant module functions
-                if selected_module == "Query Builder":
-                    show_query_builder(st.session_state["salesforce"])
-                elif selected_module == "Describe Object":
-                    show_describe_object(st.session_state["salesforce"])
-                elif selected_module == "Search Salesforce":
-                    show_search_salesforce(st.session_state["salesforce"])
-                elif selected_module == "API Tools":
-                    show_api_tools(st.session_state["salesforce"])
-                elif selected_module == "Record Hierarchy":
-                    hierarchy_viewer(st.session_state["salesforce"])
-
-            elif selected_section == "SOQL Builder":
-                selected_module = option_menu(
-                    "SOQL Builder",
-                    ["SOQL Builder Child to Parent", "SOQL BUILDER Parent to Child"],
-                    icons=["hurricane", "cpu"],
-                    menu_icon="cloud", default_index=0
-                )
-                if selected_module == "SOQL Builder Child to Parent":
-                    show_soql_query_builder(st.session_state["salesforce"])
-                elif selected_module == "SOQL BUILDER Parent to Child":
-                    show_advanced_soql_query_builder(st.session_state["salesforce"])
-
-            elif selected_section == "Visualizations":
-                selected_module = option_menu(
-                    "Visualizations",
-                    ["Data Visualizations", "Smart Visualize"],
-                    icons=["bar-chart"],
-                    menu_icon="bar-chart", default_index=0
-                )
-                if selected_module == "Data Visualizations":
-                    visualize_data(st.session_state["salesforce"])
-                elif selected_module == "Smart Visualize":
-                    smart_visualize(st.session_state["salesforce"])
-
-            elif selected_section == "Admin Tools":
-                selected_module = option_menu(
-                    "Admin Tools",
-                    ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
-                    icons=["upload", "clock", "book"],
-                    menu_icon="tools", default_index=0
-                )
-                if selected_module == "Data Import/Export":
-                    show_data_import_export(st.session_state["salesforce"])
-                elif selected_module == "Scheduled Jobs Viewer":
-                    view_scheduled_jobs(st.session_state["salesforce"])
-                elif selected_module == "Audit Logs Viewer":
-                    view_audit_logs(st.session_state["salesforce"])
-
-            elif selected_section == "Help & Settings":
-                selected_module = option_menu(
-                    "Help & Settings",
-                    ["How to Use", "Logout"],
-                    icons=["info-circle", "box-arrow-right"],
-                    menu_icon="question-circle", default_index=0
-                )
-                if selected_module == "How to Use":
-                    show_how_to_use()
-                elif selected_module == "Logout":
-                    logout()
-
         else:
-            # Non-Authenticated Menu
-            selected_module = option_menu(
+            # Show login/register for non-authenticated users
+            selected_section = option_menu(
                 "Authentication Menu",
                 ["Login", "Register", "How to Use"],
                 icons=["box-arrow-in-right", "person-plus", "info-circle"],
                 menu_icon="lock", default_index=0
             )
 
-            if selected_module == "Login":
-                login()
-            elif selected_module == "Register":
-                register()
-            elif selected_module == "How to Use":
-                show_how_to_use()
-
-    # Load content based on authentication state
+    # Main Content Area
     if st.session_state["is_authenticated"]:
-        st.write("Welcome to Salesforce Utility App!")
+        # Handle authenticated user modules
+        if selected_section == "Salesforce Tools":
+            selected_tool = option_menu(
+                "Salesforce Tools",
+                ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
+                icons=["wrench", "book", "search", "gear", "tree"],
+                menu_icon="cloud", default_index=0
+            )
+            if selected_tool == "Query Builder":
+                show_query_builder(st.session_state["salesforce"])
+            elif selected_tool == "Describe Object":
+                show_describe_object(st.session_state["salesforce"])
+            elif selected_tool == "Search Salesforce":
+                show_search_salesforce(st.session_state["salesforce"])
+            elif selected_tool == "API Tools":
+                show_api_tools(st.session_state["salesforce"])
+            elif selected_tool == "Record Hierarchy":
+                hierarchy_viewer(st.session_state["salesforce"])
+
+        elif selected_section == "SOQL Builder":
+            selected_builder = option_menu(
+                "SOQL Builder",
+                ["SOQL Builder Child to Parent", "SOQL BUILDER Parent to Child"],
+                icons=["hurricane", "cpu"],
+                menu_icon="cloud", default_index=0
+            )
+            if selected_builder == "SOQL Builder Child to Parent":
+                show_soql_query_builder(st.session_state["salesforce"])
+            elif selected_builder == "SOQL BUILDER Parent to Child":
+                show_advanced_soql_query_builder(st.session_state["salesforce"])
+
+        elif selected_section == "Visualizations":
+            selected_visualization = option_menu(
+                "Visualizations",
+                ["Data Visualizations", "Smart Visualize"],
+                icons=["bar-chart"],
+                menu_icon="bar-chart", default_index=0
+            )
+            if selected_visualization == "Data Visualizations":
+                visualize_data(st.session_state["salesforce"])
+            elif selected_visualization == "Smart Visualize":
+                smart_visualize(st.session_state["salesforce"])
+
+        elif selected_section == "Admin Tools":
+            selected_admin = option_menu(
+                "Admin Tools",
+                ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
+                icons=["upload", "clock", "book"],
+                menu_icon="tools", default_index=0
+            )
+            if selected_admin == "Data Import/Export":
+                show_data_import_export(st.session_state["salesforce"])
+            elif selected_admin == "Scheduled Jobs Viewer":
+                view_scheduled_jobs(st.session_state["salesforce"])
+            elif selected_admin == "Audit Logs Viewer":
+                view_audit_logs(st.session_state["salesforce"])
+
+        elif selected_section == "Help & Settings":
+            selected_setting = option_menu(
+                "Help & Settings",
+                ["How to Use", "Logout"],
+                icons=["info-circle", "box-arrow-right"],
+                menu_icon="question-circle", default_index=0
+            )
+            if selected_setting == "How to Use":
+                show_how_to_use()
+            elif selected_setting == "Logout":
+                logout()
+
     else:
-        st.write("Please log in to continue.")
+        # Handle non-authenticated user modules
+        if selected_section == "Login":
+            login()
+        elif selected_section == "Register":
+            register()
+        elif selected_section == "How to Use":
+            show_how_to_use()
 
 if __name__ == "__main__":
     main()
