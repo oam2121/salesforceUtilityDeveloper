@@ -67,7 +67,7 @@ def login():
             try:
                 st.session_state['salesforce'] = authenticate_salesforce_with_user(st.session_state['user_data'])
                 st.success("Login successful!")
-                st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"Salesforce authentication failed: {e}")
                 st.session_state['is_authenticated'] = False
@@ -79,7 +79,7 @@ def logout():
     st.session_state['is_authenticated'] = False
     st.session_state['user_data'] = None
     st.session_state['salesforce'] = None
-    st.experimental_rerun()
+    st.rerun()
 
 # Main function
 def main():
