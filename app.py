@@ -126,7 +126,9 @@ def main():
     # Sidebar navigation
     with st.sidebar:
         st.title("Navigation")
+
         if st.session_state['is_authenticated']:
+            # Authenticated User Menu
             selected_section = option_menu(
                 "Sections",
                 ["General", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
@@ -134,23 +136,64 @@ def main():
                 menu_icon="menu-app", default_index=0
             )
 
-            if selected_section == "Help & Settings":
+            # Nested Menu Based on Selected Section
+            if selected_section == "General":
+                selected_module = option_menu(
+                    "General",
+                    ["Home", "User, Profile, Roles Info", "Global Actions", "How to Use"],
+                    icons=["house", "person", "app-indicator", "info-circle"],
+                    menu_icon="list", default_index=0
+                )
+            elif selected_section == "Salesforce Tools":
+                selected_module = option_menu(
+                    "Salesforce Tools",
+                    ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
+                    icons=["wrench", "book", "search", "gear", "tree"],
+                    menu_icon="cloud", default_index=0
+                )
+            elif selected_section == "SOQL Builder":
+                selected_module = option_menu(
+                    "SOQL Builder",
+                    ["SOQL Builder Child to Parent", "SOQL BUILDER Parent to Child"],
+                    icons=["hurricane", "cpu"],
+                    menu_icon="cloud", default_index=0
+                )
+            elif selected_section == "Visualizations":
+                selected_module = option_menu(
+                    "Visualizations",
+                    ["Data Visualizations", "Smart Visualize"],
+                    icons=["bar-chart"],
+                    menu_icon="bar-chart", default_index=0
+                )
+            elif selected_section == "Admin Tools":
+                selected_module = option_menu(
+                    "Admin Tools",
+                    ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
+                    icons=["upload", "clock", "book"],
+                    menu_icon="tools", default_index=0
+                )
+            elif selected_section == "Help & Settings":
                 selected_module = option_menu(
                     "Help & Settings",
                     ["How to Use", "Logout"],
                     icons=["info-circle", "box-arrow-right"],
                     menu_icon="question-circle", default_index=0
                 )
+
+                # If Logout is selected, trigger logout functionality
                 if selected_module == "Logout":
                     logout()
 
         else:
+            # Non-Authenticated User Menu
             selected_module = option_menu(
                 "Authentication Menu",
                 ["Login", "Register", "How to Use"],
                 icons=["box-arrow-in-right", "person-plus", "info-circle"],
                 menu_icon="lock", default_index=0
             )
+
+            # Handle Menu Options
             if selected_module == "Login":
                 login()
             elif selected_module == "Register":
@@ -158,11 +201,38 @@ def main():
             elif selected_module == "How to Use":
                 show_how_to_use()
 
-    # Display content
+    # Main Content Display Based on Authentication State
     if st.session_state['is_authenticated']:
-        st.write("Welcome to Salesforce Utility App!")
-    else:
-        st.write("Please log in to continue.")
+        # Handle Modules for Authenticated Users
+        modules_with_sf = {
+            'Home': display_home,
+            'Query Builder': show_query_builder,
+            'Describe Object': show_describe_object,
+            'Search Salesforce': show_search_salesforce,
+            'API Tools': show_api_tools,
+            'Record Hierarchy': hierarchy_viewer,
+            'Data Visualizations': visualize_data,
+            'Smart Visualize': smart_visualize,
+            'Data Import/Export': show_data_import_export,
+            'Scheduled Jobs Viewer': view_scheduled_jobs,
+            'Audit Logs Viewer': view_audit_logs,
+            'SOQL Builder Child to Parent': show_soql_query_builder,
+            'SOQL BUILDER Parent to Child': show_advanced_soql_query_builder,
+            'User, Profile, Roles Info': display_user_info
+        }
+        modules_without_sf = {
+            'How to Use': show_how_to_use
+        }
 
-if __name__ == "__main__":
-    main()
+        # Check and Display Module Content
+        if selected_module in modules_with_sf:
+            try:
+                modules_with_sf[selected_module](st.session_state['salesforce'])
+            except KeyError as e:
+                st.error(f"Error loading Salesforce data: {e}")
+                logout()
+        elif selected_module in modules_without_sf:
+            modules_without_sf[selected_module]()
+    else:
+        # Non-Authenticated Content
+        st.write("Please log in to continue.")
