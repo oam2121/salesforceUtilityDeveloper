@@ -46,7 +46,6 @@ cookies = EncryptedCookieManager(
 if not cookies.ready():
     st.stop()
 
-
 # Function to initialize session state
 def initialize_session():
     if 'is_authenticated' not in st.session_state:
