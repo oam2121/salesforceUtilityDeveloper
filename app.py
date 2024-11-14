@@ -118,9 +118,23 @@ def main():
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
-             # Display the logged-in user's username
-            username = st.session_state["user_data"].get("username", "Unknown User")
-            st.write(f"**Logged in as:** {username}")  # Display as non-clickable plain text
+            # Display the logged-in user's username in the same style as the navigation options
+            st.markdown(
+                """
+                <style>
+                .sidebar-username {
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: black;
+                    margin-bottom: 15px;
+                    display: block;
+                    text-align: left;
+                }
+                </style>
+                """, unsafe_allow_html=True
+            )
+            st.markdown(f"<div class='sidebar-username'>Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</div>", unsafe_allow_html=True)
+
             # Show options for authenticated users
             selected_section = option_menu(
                 "Sections",
@@ -219,5 +233,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
     
     #Done Working for now Deploy Code: DEPL112 (app.py) 
