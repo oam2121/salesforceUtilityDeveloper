@@ -48,7 +48,7 @@ def display_home(sf):
         if st.button("📇 New Contact", key="contact_button"):
             st.session_state.selected_action = "New Contact"
     with col2:
-        if st.button("💼 New Opportunity", key="opportunity_button"):
+        if st.button("💼 New Opp", key="opportunity_button"):
             st.session_state.selected_action = "New Opportunity"
     with col3:
         if st.button("🗓️ New Event", key="event_button"):

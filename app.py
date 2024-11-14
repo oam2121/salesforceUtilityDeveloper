@@ -90,6 +90,7 @@ def login():
             st.rerun()  # Rerun to refresh state
         else:
             st.error("Invalid credentials or PIN.")
+            st.error('Please Try Again')
 # Logout function
 def logout():
     st.session_state['is_authenticated'] = False
@@ -135,7 +136,7 @@ def main():
             elif selected_section == "Salesforce Tools":
                 selected_module = option_menu(
                     "Salesforce Tools", 
-                    ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","SOQL Builder"],
+                    ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy"],
                     icons=["wrench", "book", "search", "gear", "tree"],
                     menu_icon="cloud", default_index=0
                 )
