@@ -26,15 +26,19 @@ from db_manager import init_db, register_user, verify_user, get_user_data
 from authentication import authenticate_salesforce_with_user
 import uuid  # For generating session IDs
 from streamlit_cookies_manager import EncryptedCookieManager
+from dotenv import load_dotenv
 
 
 # Initialize database
 init_db()
 
-# Initialize cookie manager
-cookies = EncryptedCookieManager(prefix="salesforce_app_")
+load_dotenv()  # Load variables from .env
+cookies = EncryptedCookieManager(
+    prefix="salesforce_app_",
+    password=os.getenv("COOKIE_PASSWORD", "default_secure_password")
+)
 if not cookies.ready():
-    st.stop()  # Ensure cookies are ready
+    st.stop()
 
 # Function to initialize session state
 def initialize_session():
