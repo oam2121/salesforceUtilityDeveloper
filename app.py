@@ -24,12 +24,28 @@ from global_actions import show_global_actions
 
 from db_manager import init_db, register_user, verify_user, get_user_data
 from authentication import authenticate_salesforce_with_user
+import uuid  # For generating session IDs
 
 
 # Initialize the database
 init_db()
 
-# Function to handle registration
+# Function to maintain session persistence
+def initialize_session():
+    query_params = st.experimental_get_query_params()
+    if 'session_id' in query_params:
+        st.session_state['session_id'] = query_params['session_id'][0]
+    if 'is_authenticated' not in st.session_state:
+        st.session_state['is_authenticated'] = False
+    if 'user_data' not in st.session_state:
+        st.session_state['user_data'] = None
+    if 'salesforce' not in st.session_state:
+        st.session_state['salesforce'] = None
+
+def persist_session(session_id):
+    st.experimental_set_query_params(session_id=session_id)
+
+# Registration page
 def register():
     st.title("Register")
     username = st.text_input("Salesforce Username")
@@ -49,7 +65,7 @@ def register():
         else:
             st.error("PIN must be 6 digits.")
 
-# Function to handle login
+# Login page
 def login():
     st.title("Login")
     username = st.text_input("Username")
@@ -61,35 +77,36 @@ def login():
             st.session_state['is_authenticated'] = True
             st.session_state['user_data'] = get_user_data(username)
             
-            # Ensure password is stored in session state for Salesforce authentication
+            # Ensure password is part of user_data for Salesforce authentication
             st.session_state['user_data']['password'] = password
             
             try:
                 st.session_state['salesforce'] = authenticate_salesforce_with_user(st.session_state['user_data'])
+                
+                # Generate and persist a session ID
+                session_id = str(uuid.uuid4())
+                st.session_state['session_id'] = session_id
+                persist_session(session_id)
+
                 st.success("Login successful!")
-                st.rerun()
+                st.experimental_rerun()
             except Exception as e:
                 st.error(f"Salesforce authentication failed: {e}")
                 st.session_state['is_authenticated'] = False
         else:
             st.error("Invalid username, password, or PIN.")
 
-# Function to handle logout
+# Logout function
 def logout():
     st.session_state['is_authenticated'] = False
     st.session_state['user_data'] = None
     st.session_state['salesforce'] = None
-    st.rerun()
+    st.experimental_set_query_params()  # Clear query params
+    st.experimental_rerun()
 
 # Main function
 def main():
-    # Initialize session state variables
-    if 'is_authenticated' not in st.session_state:
-        st.session_state['is_authenticated'] = False
-    if 'user_data' not in st.session_state:
-        st.session_state['user_data'] = None
-    if 'salesforce' not in st.session_state:
-        st.session_state['salesforce'] = None
+    initialize_session()  # Ensure session state is initialized
 
     # Sidebar navigation
     with st.sidebar:
