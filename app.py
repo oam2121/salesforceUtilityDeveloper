@@ -32,17 +32,20 @@ from dotenv import load_dotenv
 # Initialize database
 init_db()
 
+# Access the COOKIE_PASSWORD directly from st.secrets
 password = st.secrets.get("COOKIE_PASSWORD")
 if not password:
     st.error("COOKIE_PASSWORD is not set in Streamlit Secrets!")
     st.stop()
 
+# Initialize the EncryptedCookieManager with the password
 cookies = EncryptedCookieManager(
     prefix="salesforce_app_",
     password=password
 )
 if not cookies.ready():
     st.stop()
+
 
 # Function to initialize session state
 def initialize_session():
