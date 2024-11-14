@@ -28,22 +28,20 @@ import uuid  # For generating session IDs
 from streamlit_cookies_manager import EncryptedCookieManager
 from dotenv import load_dotenv
 
-
 # Initialize database
 init_db()
 
-password = st.secrets.get("COOKIE_PASSWORD")
-if not password:
-    st.error("COOKIE_PASSWORD is not set in Streamlit Secrets!")
-    st.stop()
-# Initialize the cookie manager with the password
+# Temporarily hardcode the password directly in the app
+password = "TemporarySecurePassword123!"  # Replace this with your temporary password
+
+# Initialize the cookie manager with the hardcoded password
 cookies = EncryptedCookieManager(
     prefix="salesforce_app_",  # Prefix for cookie names
-    password=st.secrets.get("COOKIE_PASSWORD")  # Retrieve the secret
+    password=password  # Use the hardcoded password
 )
 
 if not cookies.ready():
-    st.stop()  # Ensure the cookie password is set
+    st.stop()  # Ensure the cookie manager is ready
 
 # Function to initialize session state
 def initialize_session():
