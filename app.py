@@ -89,7 +89,7 @@ def login():
                 persist_session(session_id)
 
                 st.success("Login successful!")
-                st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"Salesforce authentication failed: {e}")
                 st.session_state['is_authenticated'] = False
@@ -102,7 +102,7 @@ def logout():
     st.session_state['user_data'] = None
     st.session_state['salesforce'] = None
     st.experimental_set_query_params()  # Clear query params
-    st.experimental_rerun()
+    st.rerun()
 
 # Main function
 def main():
