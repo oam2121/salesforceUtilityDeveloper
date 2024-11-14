@@ -120,7 +120,7 @@ def main():
         if st.session_state["is_authenticated"]:
              # Display the logged-in user's username
             username = st.session_state["user_data"].get("username", "Unknown User")
-            st.markdown(f"**Logged in as:** {username}")
+            st.write(f"**Logged in as:** {username}")  # Display as non-clickable plain text
             # Show options for authenticated users
             selected_section = option_menu(
                 "Sections",
