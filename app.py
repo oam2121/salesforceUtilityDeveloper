@@ -115,6 +115,10 @@ def logout():
 
 # Main Application
 def main():
+    # Initialize session state for selected_action if it doesn't exist
+    if "selected_action" not in st.session_state:
+        st.session_state["selected_action"] = None
+
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
@@ -239,6 +243,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
     
     #Done Working for now Deploy Code: DEPL112 (app.py) 
