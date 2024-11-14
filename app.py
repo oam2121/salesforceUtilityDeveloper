@@ -97,7 +97,7 @@ def login():
                 cookies.save()
 
                 st.success("Login successful!")
-                st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"Salesforce authentication failed: {e}")
                 st.session_state["is_authenticated"] = False
@@ -115,7 +115,7 @@ def logout():
     cookies["user_data"] = ""
     cookies.save()
 
-    st.experimental_rerun()
+    st.rerun()
 
 # Main application
 def main():
