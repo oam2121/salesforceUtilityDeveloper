@@ -33,9 +33,10 @@ from dotenv import load_dotenv
 init_db()
 
 load_dotenv()  # Load variables from .env
+# Import Streamlit secrets
 cookies = EncryptedCookieManager(
     prefix="salesforce_app_",
-    password=os.getenv("COOKIE_PASSWORD", "default_secure_password")
+    password=st.secrets["general"]["COOKIE_PASSWORD"]
 )
 if not cookies.ready():
     st.stop()
