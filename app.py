@@ -122,46 +122,23 @@ def logout():
 
     st.rerun()
 
+from streamlit_option_menu import option_menu
+
 def main():
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
-            # Display the logged-in user's username and logout option
-            st.markdown(
-                f"""
-                <style>
-                .username-dropdown {{
-                    font-size: 16px;
-                    font-weight: bold;
-                    color: black;
-                    margin-bottom: 15px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }}
-                .logout-button {{
-                    padding: 5px 10px;
-                    background-color: #f44336;
-                    color: white;
-                    border: none;
-                    cursor: pointer;
-                    border-radius: 4px;
-                    font-size: 12px;
-                }}
-                .logout-button:hover {{
-                    background-color: #d32f2f;
-                }}
-                </style>
-                <div class="username-dropdown">
-                    <span>Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</span>
-                    <a href="?logout=true" class="logout-button">Logout</a>
-                </div>
-                """,
-                unsafe_allow_html=True,
+            # Display username and logout option in a dropdown menu using `option_menu`
+            user_action = option_menu(
+                "User",
+                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"],
+                icons=["person", "box-arrow-right"],
+                menu_icon="person-circle",
+                default_index=0,
             )
 
-            # Handle logout via query parameter
-            if st.experimental_get_query_params().get("logout"):
+            # Handle logout option
+            if user_action == "Logout":
                 logout()
 
             # Show options for authenticated users
