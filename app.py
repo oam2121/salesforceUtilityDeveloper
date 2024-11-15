@@ -122,12 +122,11 @@ def logout():
 
     st.rerun()
 
-# Main Application
 def main():
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
-            # Display the logged-in user's username and logout option in a dropdown-like structure
+            # Display the logged-in user's username and logout option
             st.markdown(
                 f"""
                 <style>
@@ -139,9 +138,6 @@ def main():
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                }}
-                .username-label {{
-                    margin-right: 10px;
                 }}
                 .logout-button {{
                     padding: 5px 10px;
@@ -157,16 +153,14 @@ def main():
                 }}
                 </style>
                 <div class="username-dropdown">
-                    <span class="username-label">Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</span>
-                    <form method="post">
-                        <button class="logout-button" name="logout" type="submit">Logout</button>
-                    </form>
+                    <span>Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</span>
+                    <a href="?logout=true" class="logout-button">Logout</a>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
 
-            # Logout functionality
+            # Handle logout via query parameter
             if st.experimental_get_query_params().get("logout"):
                 logout()
 
@@ -297,5 +291,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
     #Done Working for now Deploy Code: DEPL112 (app.py) 
