@@ -127,26 +127,15 @@ def main():
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
-            # Display the logged-in user's username in the sidebar
-            st.markdown(
-                """
-                <style>
-                .sidebar-username {
-                    font-size: 16px;
-                    font-weight: bold;
-                    color: black;
-                    margin-bottom: 15px;
-                    display: block;
-                    text-align: left;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True,
+            # Dropdown for username with logout option
+            username_options = st.selectbox(
+                "Account",
+                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"]
             )
-            st.markdown(
-                f"<div class='sidebar-username'>Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</div>",
-                unsafe_allow_html=True,
-            )
+
+            # Handle logout option in dropdown
+            if username_options == "Logout":
+                logout()
 
             # Show options for authenticated users
             selected_section = option_menu(
@@ -275,6 +264,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
     
