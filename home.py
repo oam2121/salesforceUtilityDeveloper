@@ -66,7 +66,7 @@ def display_home(sf):
     # Displaying the selected form below the buttons
     action_function_map = {
         "New Contact": create_new_contact,
-        "New Opportunity": create_new_opportunity,
+        "New Opp": create_new_opportunity,
         "New Event": create_new_event,
         "New Case": create_new_case,
         "New Lead": create_new_lead,
