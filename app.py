@@ -180,6 +180,8 @@ def main():
                 show_api_tools(st.session_state["salesforce"])
             elif selected_tool == "Record Hierarchy":
                 hierarchy_viewer(st.session_state["salesforce"])
+            elif selected_tool == "Global Actions":
+                show_global_actions(st.session_state["salesforce"])
            
 
         elif selected_section == "SOQL Builder":
