@@ -127,14 +127,47 @@ def main():
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
-            # Dropdown for username with logout option
-            username_options = st.selectbox(
-                "Account",
-                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"]
+            # Display the logged-in user's username and logout option in a dropdown-like structure
+            st.markdown(
+                f"""
+                <style>
+                .username-dropdown {{
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: black;
+                    margin-bottom: 15px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }}
+                .username-label {{
+                    margin-right: 10px;
+                }}
+                .logout-button {{
+                    padding: 5px 10px;
+                    background-color: #f44336;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    border-radius: 4px;
+                    font-size: 12px;
+                }}
+                .logout-button:hover {{
+                    background-color: #d32f2f;
+                }}
+                </style>
+                <div class="username-dropdown">
+                    <span class="username-label">Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</span>
+                    <form method="post">
+                        <button class="logout-button" name="logout" type="submit">Logout</button>
+                    </form>
+                </div>
+                """,
+                unsafe_allow_html=True,
             )
 
-            # Handle logout option in dropdown
-            if username_options == "Logout":
+            # Logout functionality
+            if st.experimental_get_query_params().get("logout"):
                 logout()
 
             # Show options for authenticated users
@@ -265,7 +298,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-
-    
     #Done Working for now Deploy Code: DEPL112 (app.py) 
