@@ -157,13 +157,11 @@ def main():
         if selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
-                ["Home","Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","Global Actions"],
+                ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","Global Actions"],
                 icons=["wrench", "book", "search", "gear", "tree","columns"],
                 menu_icon="cloud", default_index=0
             )
-            if selected_tool == "Home":
-                display_home(st.session_state["salesforce"])
-            elif selected_tool == "Query Builder":
+            if selected_tool == "Query Builder":
                 show_query_builder(st.session_state["salesforce"])
             elif selected_tool == "Describe Object":
                 show_describe_object(st.session_state["salesforce"])
@@ -203,7 +201,7 @@ def main():
         elif selected_section == "Admin Tools":
             selected_admin = option_menu(
                 "Admin Tools",
-                ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer","Users Roles, Profiles"],
+                ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer",""],
                 icons=["upload", "clock", "book"],
                 menu_icon="tools", default_index=0
             )
@@ -213,8 +211,6 @@ def main():
                 view_scheduled_jobs(st.session_state["salesforce"])
             elif selected_admin == "Audit Logs Viewer":
                 view_audit_logs(st.session_state["salesforce"])
-            elif selected_admin == "Users Roles, Profiles":
-                display_user_info(st.session_state["salesforce"])
 
         elif selected_section == "Help & Settings":
             selected_setting = option_menu(
