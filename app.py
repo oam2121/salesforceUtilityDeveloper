@@ -167,7 +167,7 @@ def main():
             selected_tool = option_menu(
                 "Salesforce Tools",
                 ["Home","Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","Global Actions"],
-                icons=["wrench", "book", "search", "gear", "tree","columns"],
+                icons=["House","wrench", "book", "search", "gear", "tree","columns","brilliance"],
                 menu_icon="cloud", default_index=0
             )
             if selected_tool == "Home":
