@@ -166,11 +166,13 @@ def main():
         if selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
-                ["Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","Global Actions"],
+                ["Home","Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","Global Actions"],
                 icons=["wrench", "book", "search", "gear", "tree","columns"],
                 menu_icon="cloud", default_index=0
             )
-            if selected_tool == "Query Builder":
+            if selected_tool == "Home":
+                display_home(st.session_state["salesforce"])
+            elif selected_tool == "Query Builder":
                 show_query_builder(st.session_state["salesforce"])
             elif selected_tool == "Describe Object":
                 show_describe_object(st.session_state["salesforce"])
