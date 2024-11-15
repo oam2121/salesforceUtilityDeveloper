@@ -127,7 +127,7 @@ def main():
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
-            # Display the logged-in user's username in the same style as the navigation options
+            # Display the logged-in user's username in the sidebar
             st.markdown(
                 """
                 <style>
@@ -140,16 +140,21 @@ def main():
                     text-align: left;
                 }
                 </style>
-                """, unsafe_allow_html=True
+                """,
+                unsafe_allow_html=True,
             )
-            st.markdown(f"<div class='sidebar-username'>Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='sidebar-username'>Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}</div>",
+                unsafe_allow_html=True,
+            )
 
             # Show options for authenticated users
             selected_section = option_menu(
                 "Sections",
                 ["Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
                 icons=["briefcase", "fan", "bar-chart-line", "wrench", "gear"],
-                menu_icon="menu-app", default_index=0
+                menu_icon="menu-app",
+                default_index=0,
             )
         else:
             # Show login/register for non-authenticated users
@@ -157,7 +162,8 @@ def main():
                 "Authentication Menu",
                 ["Login", "Register", "How to Use"],
                 icons=["box-arrow-in-right", "person-plus", "info-circle"],
-                menu_icon="lock", default_index=0
+                menu_icon="lock",
+                default_index=0,
             )
 
     # Main Content Area
@@ -166,10 +172,28 @@ def main():
         if selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
-                ["Home","Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy","Global Actions"],
-                icons=["House","wrench", "book", "search", "gear", "tree","columns","brilliance"],
-                menu_icon="cloud", default_index=0
+                [
+                    "Home",
+                    "Query Builder",
+                    "Describe Object",
+                    "Search Salesforce",
+                    "API Tools",
+                    "Record Hierarchy",
+                    "Global Actions",
+                ],
+                icons=[
+                    "house",         # Home
+                    "wrench",        # Query Builder
+                    "book",          # Describe Object
+                    "search",        # Search Salesforce
+                    "gear",          # API Tools
+                    "diagram-3",     # Record Hierarchy
+                    "rocket",        # Global Actions
+                ],
+                menu_icon="cloud",
+                default_index=0,
             )
+
             if selected_tool == "Home":
                 display_home(st.session_state["salesforce"])
             elif selected_tool == "Query Builder":
@@ -184,14 +208,14 @@ def main():
                 hierarchy_viewer(st.session_state["salesforce"])
             elif selected_tool == "Global Actions":
                 show_global_actions(st.session_state["salesforce"])
-           
 
         elif selected_section == "SOQL Builder":
             selected_builder = option_menu(
                 "SOQL Builder",
                 ["SOQL Builder Child to Parent", "SOQL BUILDER Parent to Child"],
                 icons=["hurricane", "cpu"],
-                menu_icon="cloud", default_index=0
+                menu_icon="cloud",
+                default_index=0,
             )
             if selected_builder == "SOQL Builder Child to Parent":
                 show_soql_query_builder(st.session_state["salesforce"])
@@ -203,7 +227,8 @@ def main():
                 "Visualizations",
                 ["Data Visualizations", "Smart Visualize"],
                 icons=["bar-chart"],
-                menu_icon="bar-chart", default_index=0
+                menu_icon="bar-chart",
+                default_index=0,
             )
             if selected_visualization == "Data Visualizations":
                 visualize_data(st.session_state["salesforce"])
@@ -213,9 +238,10 @@ def main():
         elif selected_section == "Admin Tools":
             selected_admin = option_menu(
                 "Admin Tools",
-                ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer",""],
+                ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
                 icons=["upload", "clock", "book"],
-                menu_icon="tools", default_index=0
+                menu_icon="tools",
+                default_index=0,
             )
             if selected_admin == "Data Import/Export":
                 show_data_import_export(st.session_state["salesforce"])
@@ -229,7 +255,8 @@ def main():
                 "Help & Settings",
                 ["How to Use", "Logout"],
                 icons=["info-circle", "box-arrow-right"],
-                menu_icon="question-circle", default_index=0
+                menu_icon="question-circle",
+                default_index=0,
             )
             if selected_setting == "How to Use":
                 show_how_to_use()
@@ -245,8 +272,10 @@ def main():
         elif selected_section == "How to Use":
             show_how_to_use()
 
+
 if __name__ == "__main__":
     main()
+
 
     
     #Done Working for now Deploy Code: DEPL112 (app.py) 
