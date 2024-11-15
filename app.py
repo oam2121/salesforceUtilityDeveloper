@@ -33,7 +33,7 @@ cookies = EncryptedCookieManager(prefix="salesforce_app_", password=PASSWORD)
 if not cookies.ready():
     st.stop()
 
-# Initialize session state
+# Initialize session state and restore connection
 def initialize_session():
     if "is_authenticated" not in st.session_state:
         st.session_state["is_authenticated"] = False
@@ -49,7 +49,16 @@ def initialize_session():
         if user_data:
             st.session_state["user_data"] = eval(user_data)
 
+        # Re-establish Salesforce connection if it doesn't exist
+        if st.session_state["salesforce"] is None and st.session_state["user_data"]:
+            try:
+                st.session_state["salesforce"] = authenticate_salesforce_with_user(st.session_state["user_data"])
+            except Exception as e:
+                st.error(f"Failed to reconnect with Salesforce: {e}")
+                st.session_state["is_authenticated"] = False
+
 initialize_session()
+
 
 # Registration Page
 def register():
