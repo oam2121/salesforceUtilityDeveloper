@@ -4,7 +4,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 from datetime import datetime, timedelta
 
 # Importing required modules
-from db_manager import init_db, register_user, verify_user, get_user_data, update_user_profile
+from db_manager import init_db, register_user, verify_user, get_user_data
 from authentication import authenticate_salesforce_with_user
 from smart_visualize import smart_visualize
 from how_to_use import show_how_to_use
@@ -70,52 +70,8 @@ def initialize_session():
             st.warning("Session timed out due to inactivity. Please login again.")
             logout()
         else:
+            # Update last activity timestamp
             st.session_state["last_activity"] = current_time
-
-# My Profile Page
-def my_profile():
-    st.title("My Profile")
-    st.info("Enter your PIN to view or update your profile.")
-
-    pin = st.text_input("Enter your PIN", type="password", max_chars=6)
-
-    if st.button("Access Profile"):
-        if pin == st.session_state["user_data"]["pin"]:
-            st.success("PIN verified. You can now view and update your profile.")
-            
-            # Profile form in the main screen
-            with st.form("profile_form"):
-                st.write("### Profile Details")
-                # Display existing user information
-                st.text_input("Salesforce Username", value=st.session_state["user_data"]["username"], disabled=True)
-                st.text_input("Salesforce Password", value=st.session_state["user_data"]["password"], type="password", disabled=True)
-                st.text_input("Salesforce Security Token", value=st.session_state["user_data"]["security_token"], disabled=True)
-                st.text_input("Client ID", value=st.session_state["user_data"]["client_id"], disabled=True)
-                st.text_input("Client Secret", value=st.session_state["user_data"]["client_secret"], type="password", disabled=True)
-                st.text_input("Domain", value=st.session_state["user_data"]["domain"], disabled=True)
-
-                # Fields for additional information
-                name = st.text_input("Name (Optional)", value=st.session_state["user_data"].get("name", ""))
-                email = st.text_input("Email (Optional)", value=st.session_state["user_data"].get("email", ""))
-                phone = st.text_input("Phone (Optional)", value=st.session_state["user_data"].get("phone", ""))
-
-                # Update button
-                if st.form_submit_button("Update Profile"):
-                    success = update_user_profile(
-                        st.session_state["user_data"]["username"],
-                        name,
-                        email,
-                        phone
-                    )
-                    if success:
-                        st.session_state["user_data"].update({"name": name, "email": email, "phone": phone})  # Update session
-                        st.success("Profile updated successfully!")
-                    else:
-                        st.error("Failed to update profile. Please try again.")
-        else:
-            st.error("Invalid PIN. Please try again.")
-
-
 
 # Registration Page
 def register():
@@ -152,9 +108,12 @@ def login():
 
             try:
                 st.session_state["salesforce"] = authenticate_salesforce_with_user(st.session_state["user_data"])
+
+                # Store session in cookies
                 cookies["is_authenticated"] = "true"
                 cookies["user_data"] = str(st.session_state["user_data"])
                 cookies.save()
+
                 st.success("Login successful!")
                 st.rerun()
             except Exception as e:
@@ -168,9 +127,12 @@ def logout():
     st.session_state["is_authenticated"] = False
     st.session_state["user_data"] = None
     st.session_state["salesforce"] = None
+
+    # Clear cookies
     cookies["is_authenticated"] = "false"
     cookies["user_data"] = ""
     cookies.save()
+
     st.rerun()
 
 # Main Function
@@ -181,7 +143,7 @@ def main():
             # Update activity timestamp whenever user interacts
             st.session_state["last_activity"] = datetime.now()
 
-            # Display username and logout options
+            # Display username and logout option in a dropdown menu
             user_action = option_menu(
                 "User",
                 [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"],
@@ -190,19 +152,20 @@ def main():
                 default_index=0,
             )
 
+            # Handle logout option
             if user_action == "Logout":
                 logout()
 
-            # Navigation for authenticated users
+            # Show options for authenticated users
             selected_section = option_menu(
                 "Sections",
-                ["My Profile", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
-                icons=["person-circle", "briefcase", "fan", "bar-chart-line", "wrench", "gear"],
+                ["Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
+                icons=["briefcase", "fan", "bar-chart-line", "wrench", "gear"],
                 menu_icon="menu-app",
                 default_index=0,
             )
         else:
-            # Navigation for unauthenticated users
+            # Show login/register for non-authenticated users
             selected_section = option_menu(
                 "Authentication Menu",
                 ["Login", "Register", "How to Use"],
@@ -213,10 +176,8 @@ def main():
 
     # Main Content Area
     if st.session_state["is_authenticated"]:
-        if selected_section == "My Profile":
-            my_profile()  # Move profile form to main content
-        elif selected_section == "Salesforce Tools":
-            # Tools for Salesforce functionality
+        # Handle authenticated user modules
+        if selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
                 ["Home", "Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy", "Global Actions"],
@@ -225,7 +186,6 @@ def main():
                 default_index=0,
             )
 
-            # Call respective functions based on selection
             if selected_tool == "Home":
                 display_home(st.session_state["salesforce"])
             elif selected_tool == "Query Builder":
@@ -242,7 +202,6 @@ def main():
                 show_global_actions(st.session_state["salesforce"])
 
         elif selected_section == "SOQL Builder":
-            # Tools for SOQL queries
             selected_builder = option_menu(
                 "SOQL Builder",
                 ["SOQL Builder Child to Parent", "SOQL Builder Parent to Child"],
@@ -250,14 +209,12 @@ def main():
                 menu_icon="cloud",
                 default_index=0,
             )
-
             if selected_builder == "SOQL Builder Child to Parent":
                 show_soql_query_builder(st.session_state["salesforce"])
             elif selected_builder == "SOQL Builder Parent to Child":
                 show_advanced_soql_query_builder(st.session_state["salesforce"])
 
         elif selected_section == "Visualizations":
-            # Visualization tools
             selected_visualization = option_menu(
                 "Visualizations",
                 ["Data Visualizations", "Smart Visualize"],
@@ -265,14 +222,12 @@ def main():
                 menu_icon="bar-chart",
                 default_index=0,
             )
-
             if selected_visualization == "Data Visualizations":
                 visualize_data(st.session_state["salesforce"])
             elif selected_visualization == "Smart Visualize":
                 smart_visualize(st.session_state["salesforce"])
 
         elif selected_section == "Admin Tools":
-            # Admin tools section
             selected_admin = option_menu(
                 "Admin Tools",
                 ["Data Import/Export", "Scheduled Jobs Viewer", "Audit Logs Viewer"],
@@ -280,7 +235,6 @@ def main():
                 menu_icon="tools",
                 default_index=0,
             )
-
             if selected_admin == "Data Import/Export":
                 show_data_import_export(st.session_state["salesforce"])
             elif selected_admin == "Scheduled Jobs Viewer":
@@ -289,7 +243,6 @@ def main():
                 view_audit_logs(st.session_state["salesforce"])
 
         elif selected_section == "Help & Settings":
-            # Help and settings section
             selected_setting = option_menu(
                 "Help & Settings",
                 ["How to Use", "Logout"],
@@ -297,20 +250,20 @@ def main():
                 menu_icon="question-circle",
                 default_index=0,
             )
-
             if selected_setting == "How to Use":
                 show_how_to_use()
             elif selected_setting == "Logout":
                 logout()
 
     else:
-        # Handle unauthenticated user actions
+        # Handle non-authenticated user modules
         if selected_section == "Login":
             login()
         elif selected_section == "Register":
             register()
         elif selected_section == "How to Use":
             show_how_to_use()
+
 
 if __name__ == "__main__":
     initialize_session()
