@@ -101,16 +101,20 @@ def my_profile():
 
                 # Update button
                 if st.form_submit_button("Update Profile"):
-                    update_user_profile(
+                    success = update_user_profile(
                         st.session_state["user_data"]["username"],
                         name,
                         email,
                         phone
                     )
-                    st.session_state["user_data"].update({"name": name, "email": email, "phone": phone})  # Update session
-                    st.success("Profile updated successfully!")
+                    if success:
+                        st.session_state["user_data"].update({"name": name, "email": email, "phone": phone})  # Update session
+                        st.success("Profile updated successfully!")
+                    else:
+                        st.error("Failed to update profile. Please try again.")
         else:
             st.error("Invalid PIN. Please try again.")
+
 
 
 # Registration Page
