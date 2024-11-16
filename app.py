@@ -4,7 +4,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 from datetime import datetime, timedelta
 
 # Importing required modules
-from db_manager import init_db, register_user, verify_user, get_user_data
+from db_manager import init_db, register_user, verify_user, get_user_data, update_user_profile
 from authentication import authenticate_salesforce_with_user
 from smart_visualize import smart_visualize
 from how_to_use import show_how_to_use
@@ -70,7 +70,6 @@ def initialize_session():
             st.warning("Session timed out due to inactivity. Please login again.")
             logout()
         else:
-            # Update last activity timestamp
             st.session_state["last_activity"] = current_time
 
 # Registration Page
@@ -108,12 +107,9 @@ def login():
 
             try:
                 st.session_state["salesforce"] = authenticate_salesforce_with_user(st.session_state["user_data"])
-
-                # Store session in cookies
                 cookies["is_authenticated"] = "true"
                 cookies["user_data"] = str(st.session_state["user_data"])
                 cookies.save()
-
                 st.success("Login successful!")
                 st.rerun()
             except Exception as e:
@@ -127,13 +123,43 @@ def logout():
     st.session_state["is_authenticated"] = False
     st.session_state["user_data"] = None
     st.session_state["salesforce"] = None
-
-    # Clear cookies
     cookies["is_authenticated"] = "false"
     cookies["user_data"] = ""
     cookies.save()
-
     st.rerun()
+
+# My Profile Page
+def my_profile():
+    st.title("My Profile")
+    st.info("Enter your PIN to view or update your profile.")
+
+    pin = st.text_input("Enter your PIN", type="password", max_chars=6)
+
+    if st.button("Access Profile"):
+        if pin == st.session_state["user_data"]["pin"]:
+            st.success("PIN verified. You can now view and update your profile.")
+            with st.form("profile_form"):
+                st.text_input("Salesforce Username", value=st.session_state["user_data"]["username"], disabled=True)
+                st.text_input("Salesforce Password", value=st.session_state["user_data"]["password"], type="password", disabled=True)
+                st.text_input("Salesforce Security Token", value=st.session_state["user_data"]["security_token"], disabled=True)
+                st.text_input("Client ID", value=st.session_state["user_data"]["client_id"], disabled=True)
+                st.text_input("Client Secret", value=st.session_state["user_data"]["client_secret"], type="password", disabled=True)
+                st.text_input("Domain", value=st.session_state["user_data"]["domain"], disabled=True)
+
+                name = st.text_input("Name (Optional)", value=st.session_state["user_data"].get("name", ""))
+                email = st.text_input("Email (Optional)", value=st.session_state["user_data"].get("email", ""))
+                phone = st.text_input("Phone (Optional)", value=st.session_state["user_data"].get("phone", ""))
+
+                if st.form_submit_button("Update Profile"):
+                    update_user_profile(
+                        st.session_state["user_data"]["username"],
+                        name,
+                        email,
+                        phone
+                    )
+                    st.success("Profile updated successfully!")
+        else:
+            st.error("Invalid PIN. Please try again.")
 
 # Main Function
 def main():
@@ -146,14 +172,15 @@ def main():
             # Display username and logout option in a dropdown menu
             user_action = option_menu(
                 "User",
-                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"],
-                icons=["person", "box-arrow-right"],
+                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "My Profile", "Logout"],
+                icons=["person", "person-circle", "box-arrow-right"],
                 menu_icon="person-circle",
                 default_index=0,
             )
 
-            # Handle logout option
-            if user_action == "Logout":
+            if user_action == "My Profile":
+                my_profile()
+            elif user_action == "Logout":
                 logout()
 
             # Show options for authenticated users
