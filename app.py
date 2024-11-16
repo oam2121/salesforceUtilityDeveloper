@@ -1,6 +1,7 @@
 import streamlit as st
 from streamlit_option_menu import option_menu
 from streamlit_cookies_manager import EncryptedCookieManager
+from datetime import datetime, timedelta
 
 # Importing required modules
 from db_manager import init_db, register_user, verify_user, get_user_data
@@ -33,6 +34,9 @@ cookies = EncryptedCookieManager(prefix="salesforce_app_", password=PASSWORD)
 if not cookies.ready():
     st.stop()
 
+# Define session timeout (30 minutes)
+SESSION_TIMEOUT = timedelta(minutes=30)
+
 # Initialize session state and restore connection
 def initialize_session():
     if "is_authenticated" not in st.session_state:
@@ -41,6 +45,8 @@ def initialize_session():
         st.session_state["user_data"] = None
     if "salesforce" not in st.session_state:
         st.session_state["salesforce"] = None
+    if "last_activity" not in st.session_state:
+        st.session_state["last_activity"] = datetime.now()
 
     # Restore authentication from cookies
     if cookies.get("is_authenticated") == "true":
@@ -57,8 +63,15 @@ def initialize_session():
                 st.error(f"Failed to reconnect with Salesforce: {e}")
                 st.session_state["is_authenticated"] = False
 
-initialize_session()
-
+    # Check for session timeout
+    if st.session_state["is_authenticated"]:
+        current_time = datetime.now()
+        if current_time - st.session_state["last_activity"] > SESSION_TIMEOUT:
+            st.warning("Session timed out due to inactivity. Please login again.")
+            logout()
+        else:
+            # Update last activity timestamp
+            st.session_state["last_activity"] = current_time
 
 # Registration Page
 def register():
@@ -122,13 +135,15 @@ def logout():
 
     st.rerun()
 
-from streamlit_option_menu import option_menu
-
+# Main Function
 def main():
     # Sidebar Navigation
     with st.sidebar:
         if st.session_state["is_authenticated"]:
-            # Display username and logout option in a dropdown menu using `option_menu`
+            # Update activity timestamp whenever user interacts
+            st.session_state["last_activity"] = datetime.now()
+
+            # Display username and logout option in a dropdown menu
             user_action = option_menu(
                 "User",
                 [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"],
@@ -165,24 +180,8 @@ def main():
         if selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
-                [
-                    "Home",
-                    "Query Builder",
-                    "Describe Object",
-                    "Search Salesforce",
-                    "API Tools",
-                    "Record Hierarchy",
-                    "Global Actions",
-                ],
-                icons=[
-                    "house",         # Home
-                    "wrench",        # Query Builder
-                    "book",          # Describe Object
-                    "search",        # Search Salesforce
-                    "gear",          # API Tools
-                    "diagram-3",     # Record Hierarchy
-                    "rocket",        # Global Actions
-                ],
+                ["Home", "Query Builder", "Describe Object", "Search Salesforce", "API Tools", "Record Hierarchy", "Global Actions"],
+                icons=["house", "wrench", "book", "search", "gear", "diagram-3", "rocket"],
                 menu_icon="cloud",
                 default_index=0,
             )
@@ -205,14 +204,14 @@ def main():
         elif selected_section == "SOQL Builder":
             selected_builder = option_menu(
                 "SOQL Builder",
-                ["SOQL Builder Child to Parent", "SOQL BUILDER Parent to Child"],
+                ["SOQL Builder Child to Parent", "SOQL Builder Parent to Child"],
                 icons=["hurricane", "cpu"],
                 menu_icon="cloud",
                 default_index=0,
             )
             if selected_builder == "SOQL Builder Child to Parent":
                 show_soql_query_builder(st.session_state["salesforce"])
-            elif selected_builder == "SOQL BUILDER Parent to Child":
+            elif selected_builder == "SOQL Builder Parent to Child":
                 show_advanced_soql_query_builder(st.session_state["salesforce"])
 
         elif selected_section == "Visualizations":
@@ -267,7 +266,5 @@ def main():
 
 
 if __name__ == "__main__":
+    initialize_session()
     main()
-
-
-    #Done Working for now Deploy Code: DEPL112 (app.py) 
