@@ -112,6 +112,7 @@ def my_profile():
         else:
             st.error("Invalid PIN. Please try again.")
 
+
 # Registration Page
 def register():
     st.title("Register")
@@ -176,25 +177,23 @@ def main():
             # Update activity timestamp whenever user interacts
             st.session_state["last_activity"] = datetime.now()
 
-            # Display username and logout options in a dropdown menu
+            # Display username and logout options
             user_action = option_menu(
                 "User",
-                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "My Profile", "Logout"],
-                icons=["person", "person-circle", "box-arrow-right"],
+                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"],
+                icons=["person", "box-arrow-right"],
                 menu_icon="person-circle",
                 default_index=0,
             )
 
-            if user_action == "My Profile":
-                my_profile()
-            elif user_action == "Logout":
+            if user_action == "Logout":
                 logout()
 
             # Navigation for authenticated users
             selected_section = option_menu(
                 "Sections",
-                ["Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
-                icons=["briefcase", "fan", "bar-chart-line", "wrench", "gear"],
+                ["My Profile", "Salesforce Tools", "SOQL Builder", "Visualizations", "Admin Tools", "Help & Settings"],
+                icons=["person-circle", "briefcase", "fan", "bar-chart-line", "wrench", "gear"],
                 menu_icon="menu-app",
                 default_index=0,
             )
@@ -210,7 +209,9 @@ def main():
 
     # Main Content Area
     if st.session_state["is_authenticated"]:
-        if selected_section == "Salesforce Tools":
+        if selected_section == "My Profile":
+            my_profile()  # Move profile form to main content
+        elif selected_section == "Salesforce Tools":
             # Tools for Salesforce functionality
             selected_tool = option_menu(
                 "Salesforce Tools",
