@@ -4,7 +4,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 from datetime import datetime, timedelta
 
 # Importing required modules
-from db_manager import init_db, register_user, verify_user, get_user_data
+from db_manager import init_db, register_user, verify_user, get_user_data, save_user
 from authentication import authenticate_salesforce_with_user
 from smart_visualize import smart_visualize
 from how_to_use import show_how_to_use
@@ -75,23 +75,25 @@ def initialize_session():
 
 # Registration Page
 def register():
-    st.title("Register")
-    username = st.text_input("Salesforce Username")
-    password = st.text_input("Salesforce Password", type="password")
-    security_token = st.text_input("Salesforce Security Token", type="password")
-    client_id = st.text_input("Salesforce Client ID")
-    client_secret = st.text_input("Salesforce Client Secret", type="password")
+    st.title("Register New User")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    security_token = st.text_input("Security Token", type="password")
+    client_id = st.text_input("Client ID")
+    client_secret = st.text_input("Client Secret", type="password")
     domain = st.selectbox("Salesforce Domain", ["login", "test"])
-    pin = st.text_input("Set a 6-digit PIN", type="password", max_chars=6)
-
-    if st.button("Register"):
-        if len(pin) == 6 and pin.isdigit():
-            if register_user(username, password, security_token, client_id, client_secret, domain, pin):
-                st.success("Registration successful! Please login.")
-            else:
-                st.error("Username already exists. Please try another username.")
-        else:
-            st.error("PIN must be exactly 6 digits.")
+    pin = st.text_input("PIN", type="password", max_chars=6)
+    name = st.text_input("Name")
+    email = st.text_input("Email")
+    if st.button("Send OTP"):
+        otp, password_hash = register_user(username, password, security_token, client_id, client_secret, domain, pin, name, email)
+        user_otp = st.text_input('Enter OTP', max_chars=6)
+        verify_button = st.button("Verify OTP and Register")
+        if verify_button and user_otp == str(otp):
+            save_user(username, password_hash, security_token, client_id, client_secret, domain, pin, name, email)
+            st.success("Registration successful! Please login.")
+        elif verify_button:
+            st.error("Invalid OTP, please try again.")
 
 # Login Page
 def login():
