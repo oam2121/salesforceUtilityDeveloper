@@ -7,7 +7,11 @@ from random import randint
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # Load environment variables from .env file
+# Check if running in a local development environment and load .env only there
+if os.getenv('ENVIRONMENT') != 'production':
+    from dotenv import load_dotenv
+    load_dotenv()  # Load environment variables from .env file
+
 
 DB_FILE = "app_database.db"
 
@@ -35,7 +39,7 @@ def init_db():
 def send_otp_email(email, otp):
     """ Send an OTP to the user's email using SendGrid. """
     message = MIMEMultipart()
-    message['From'] = 'oamshah2121@gmail.com'
+    message['From'] = 'oamshah2121@gmail.com'  # Update this with your sending email
     message['To'] = email
     message['Subject'] = 'Your OTP for Registration'
     body = f'Hello, your OTP for registration is: {otp}'
@@ -43,7 +47,7 @@ def send_otp_email(email, otp):
     server = smtplib.SMTP('smtp.sendgrid.net', 587)
     server.starttls()
     server.login('apikey', os.getenv('SENDGRID_API_KEY'))
-    server.sendmail('oamshah2121@gmail.com', email, message.as_string())
+    server.sendmail('oamshah2121@gmail.com', email, message.as_string())  # Update the sender email
     server.quit()
 
 def register_user(username, password, security_token, client_id, client_secret, domain, pin, name, email):
