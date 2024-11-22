@@ -35,7 +35,7 @@ def register_user(username, password, security_token, client_id, client_secret, 
         cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO users (username, password_hash, security_token, client_id, client_secret, domain, pin, name, email)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?,?,?)
         """, (username, password_hash, security_token, client_id, client_secret, domain, pin, name, email))
         conn.commit()
         conn.close()
