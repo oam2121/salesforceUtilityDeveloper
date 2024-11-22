@@ -84,3 +84,31 @@ def get_user_orgs(email):
     cursor = conn.cursor()
     cursor.execute("SELECT username, domain FROM users WHERE email = ?", (email,))
     return cursor.fetchall()
+
+def get_user_data_by_username(username):
+    """ Fetch user data by username. """
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            SELECT username, password_hash, security_token, client_id, client_secret,
+                   domain, pin, name, email
+            FROM users WHERE username = ?
+        """, (username,))
+        user_data = cursor.fetchone()
+        if user_data:
+            return {
+                "username": user_data[0],
+                "password_hash": user_data[1],
+                "security_token": user_data[2],
+                "client_id": user_data[3],
+                "client_secret": user_data[4],
+                "domain": user_data[5],
+                "pin": user_data[6],
+                "name": user_data[7],
+                "email": user_data[8]
+            }
+    finally:
+        conn.close()
+
+    return None
