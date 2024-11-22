@@ -5,7 +5,7 @@ from streamlit_cookies_manager import EncryptedCookieManager
 from datetime import datetime, timedelta
 
 # Importing required modules
-from db_manager import init_db, register_user, verify_user, get_user_data
+from db_manager import init_db, register_user, verify_user, get_user_data, get_user_orgs
 from authentication import authenticate_salesforce_with_user
 from smart_visualize import smart_visualize
 from how_to_use import show_how_to_use
@@ -23,6 +23,7 @@ from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
 from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
+from datetime import datetime, timedelta
 
 # Initialize the database
 init_db()
@@ -124,6 +125,21 @@ def login():
                 st.session_state["is_authenticated"] = False
         else:
             st.error("Invalid username, password, or PIN.")
+            
+def my_orgs():
+    st.title("My Orgs")
+    user_data = st.session_state.get("user_data")
+    if user_data:
+        orgs = get_user_orgs(user_data["email"])
+        for org in orgs:
+            if st.button(f"Login to {org[0]} @ {org[1]}"):
+                if st.session_state.get("salesforce")["username"] != org[0]:
+                    st.session_state["salesforce"] = None  # Clear current session
+                    st.warning("You will be logged out from this org.")
+                    st.session_state["user_data"] = get_user_data(org[0])
+                    st.session_state["user_data"]["password"] = ""  # Clear password for security
+                    login()  # Call login function to re-authenticate
+
 
 # Logout Function
 def logout():
@@ -146,18 +162,20 @@ def main():
             # Update activity timestamp whenever user interacts
             st.session_state["last_activity"] = datetime.now()
 
-            # Display username and logout option in a dropdown menu
+            # Display username and options in a dropdown menu
             user_action = option_menu(
                 "User",
-                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"],
-                icons=["person", "box-arrow-right"],
+                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout", "My Orgs"],
+                icons=["person", "box-arrow-right", "building"],
                 menu_icon="person-circle",
                 default_index=0,
             )
 
-            # Handle logout option
+            # Handle user actions
             if user_action == "Logout":
                 logout()
+            elif user_action == "My Orgs":
+                my_orgs()
 
             # Show options for authenticated users
             selected_section = option_menu(
@@ -167,6 +185,7 @@ def main():
                 menu_icon="menu-app",
                 default_index=0,
             )
+
         else:
             # Show login/register for non-authenticated users
             selected_section = option_menu(
@@ -179,7 +198,7 @@ def main():
 
     # Main Content Area
     if st.session_state["is_authenticated"]:
-        # Handle authenticated user modules
+        # Handle authenticated user modules based on selected section
         if selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
@@ -255,8 +274,6 @@ def main():
             )
             if selected_setting == "How to Use":
                 show_how_to_use()
-            elif selected_setting == "Logout":
-                logout()
 
     else:
         # Handle non-authenticated user modules
@@ -266,7 +283,6 @@ def main():
             register()
         elif selected_section == "How to Use":
             show_how_to_use()
-
 
 if __name__ == "__main__":
     initialize_session()

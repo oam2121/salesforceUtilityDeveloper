@@ -78,3 +78,9 @@ def get_user_data(username):
             "email": user_data[7]
         }
     return None
+
+def get_user_orgs(email):
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, domain FROM users WHERE email = ?", (email,))
+    return cursor.fetchall()
