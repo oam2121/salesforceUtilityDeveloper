@@ -1,22 +1,12 @@
+
 import sqlite3
-from passlib.hash import bcrypt
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from random import randint
 import os
-from dotenv import load_dotenv
-
-# Check if running in a local development environment and load .env only there
-if os.getenv('ENVIRONMENT') != 'production':
-    from dotenv import load_dotenv
-    load_dotenv()  # Load environment variables from .env file
-
+from passlib.hash import bcrypt
 
 DB_FILE = "app_database.db"
 
+# Initialize the database and create tables if they don't exist
 def init_db():
-    """ Initialize the database and create tables if they don't exist. """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -28,7 +18,7 @@ def init_db():
             client_id TEXT,
             client_secret TEXT,
             domain TEXT,
-            pin TEXT NOT NULL,
+            pin TEXT NOT NULL
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL
         )
@@ -36,42 +26,24 @@ def init_db():
     conn.commit()
     conn.close()
 
-def send_otp_email(email, otp):
-    """ Send an OTP to the user's email using SendGrid. """
-    message = MIMEMultipart()
-    message['From'] = 'oamshah2121@gmail.com'  # Update this with your sending email
-    message['To'] = email
-    message['Subject'] = 'Your OTP for Registration'
-    body = f'Hello, your OTP for registration is: {otp}'
-    message.attach(MIMEText(body, 'plain'))
-    server = smtplib.SMTP('smtp.sendgrid.net', 587)
-    server.starttls()
-    server.login('apikey', os.getenv('SENDGRID_API_KEY'))
-    server.sendmail('oamshah2121@gmail.com', email, message.as_string())  # Update the sender email
-    server.quit()
-
+# Add a new user to the database
 def register_user(username, password, security_token, client_id, client_secret, domain, pin, name, email):
-    """ Register a new user with the details provided, including sending an OTP. """
     password_hash = bcrypt.hash(password)
-    otp = randint(100000, 999999)  # Generate a 6-digit OTP
-    send_otp_email(email, otp)
-    return otp, password_hash  # Return OTP and hashed password for further processing outside this function.
-
-def save_user(username, password_hash, security_token, client_id, client_secret, domain, pin, name, email):
-    """ Save the user to the database after OTP verification. """
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
     try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO users (username, password_hash, security_token, client_id, client_secret, domain, pin, name, email)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (username, password_hash, security_token, client_id, client_secret, domain, pin, name, email))
         conn.commit()
-    finally:
         conn.close()
+        return True
+    except sqlite3.IntegrityError:
+        return False
 
+# Verify user credentials
 def verify_user(username, password, pin):
-    """ Verify user credentials. """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("SELECT password_hash, pin FROM users WHERE username = ?", (username,))
@@ -79,11 +51,12 @@ def verify_user(username, password, pin):
     conn.close()
     if result:
         password_hash, stored_pin = result
-        return bcrypt.verify(password, password_hash) and pin == stored_pin
+        if bcrypt.verify(password, password_hash) and pin == stored_pin:
+            return True
     return False
 
+# Fetch user data by username
 def get_user_data(username):
-    """ Fetch user data by username. """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
