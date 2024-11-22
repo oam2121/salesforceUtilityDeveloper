@@ -1,11 +1,10 @@
-
 import streamlit as st
 from streamlit_option_menu import option_menu
 from streamlit_cookies_manager import EncryptedCookieManager
 from datetime import datetime, timedelta
 
 # Importing required modules
-from db_manager import init_db, register_user, verify_user, get_user_data, get_user_orgs, get_user_data_by_username
+from db_manager import init_db, register_user, verify_user, get_user_data
 from authentication import authenticate_salesforce_with_user
 from smart_visualize import smart_visualize
 from how_to_use import show_how_to_use
@@ -23,7 +22,6 @@ from basic_info import display_user_info
 from soql_query_builder import show_soql_query_builder
 from soql_query_builder_p_c import show_advanced_soql_query_builder
 from global_actions import show_global_actions
-from datetime import datetime, timedelta
 
 # Initialize the database
 init_db()
@@ -85,12 +83,10 @@ def register():
     client_secret = st.text_input("Salesforce Client Secret", type="password")
     domain = st.selectbox("Salesforce Domain", ["login", "test"])
     pin = st.text_input("Set a 6-digit PIN", type="password", max_chars=6)
-    name = st.text_input("Name")
-    email = st.text_input("Email")
 
     if st.button("Register"):
         if len(pin) == 6 and pin.isdigit():
-            if register_user(username, password, security_token, client_id, client_secret, domain, pin, name, email):
+            if register_user(username, password, security_token, client_id, client_secret, domain, pin):
                 st.success("Registration successful! Please login.")
             else:
                 st.error("Username already exists. Please try another username.")
@@ -100,7 +96,7 @@ def register():
 # Login Page
 def login():
     st.title("Login")
-    username = st.text_input("Username", value=st.session_state.get("user_data", {}).get("username", ""))
+    username = st.text_input("Username")
     password = st.text_input("Password", type="password")
     pin = st.text_input("Enter your 6-digit PIN", type="password", max_chars=6)
 
@@ -108,50 +104,23 @@ def login():
         if verify_user(username, password, pin):
             st.session_state["is_authenticated"] = True
             st.session_state["user_data"] = get_user_data(username)
-            st.session_state["salesforce"] = authenticate_salesforce_with_user(st.session_state["user_data"])
-            st.session_state["salesforce_username"] = username  # Storing Salesforce username in session state
+            st.session_state["user_data"]["password"] = password  # Add password for Salesforce authentication
 
-            # Store session in cookies
-            cookies["is_authenticated"] = "true"
-            cookies["user_data"] = str(st.session_state["user_data"])
-            cookies.save()
+            try:
+                st.session_state["salesforce"] = authenticate_salesforce_with_user(st.session_state["user_data"])
 
-            st.success("Login successful!")
-            st.rerun()
+                # Store session in cookies
+                cookies["is_authenticated"] = "true"
+                cookies["user_data"] = str(st.session_state["user_data"])
+                cookies.save()
+
+                st.success("Login successful!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Salesforce authentication failed: {e}")
+                st.session_state["is_authenticated"] = False
         else:
             st.error("Invalid username, password, or PIN.")
-
-            
-def my_orgs():
-    st.title("My Orgs")
-    user_data = st.session_state.get("user_data")
-    if user_data:
-        orgs = get_user_orgs(user_data["email"])
-        if orgs:
-            for org_username, org_domain in orgs:
-                login_button = st.button(f"Login to {org_username} @ {org_domain}")
-                if login_button:
-                    # Check if user is trying to re-login to the same org
-                    if st.session_state.get("salesforce_username") == org_username:
-                        st.info("You are already logged into this org.")
-                        continue
-
-                    # Clear current Salesforce session safely
-                    if st.session_state.get("salesforce_username") != org_username:
-                        st.session_state["salesforce"] = None
-                        st.session_state.pop("salesforce_username", None)  # Safely remove the username from session state
-                        st.warning("You will be logged out from the current org.")
-
-                    # Re-fetch user data and initiate new session
-                    updated_user_data = get_user_data_by_username(org_username)
-                    if updated_user_data:
-                        st.session_state["user_data"] = updated_user_data
-                        st.session_state["salesforce_username"] = org_username  # Update session username
-                        login()  # Re-authenticate and setup new Salesforce session
-                    else:
-                        st.error("Failed to retrieve user data for the selected org.")
-        else:
-            st.error("No organizations found for this email.")
 
 # Logout Function
 def logout():
@@ -174,20 +143,19 @@ def main():
             # Update activity timestamp whenever user interacts
             st.session_state["last_activity"] = datetime.now()
 
-            # Display username and options in a dropdown menu
+            # Display username and logout option in a dropdown menu
             user_action = option_menu(
                 "User",
-                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout", "My Orgs"],
-                icons=["person", "box-arrow-right", "building"],
+                [f"Logged in as: {st.session_state['user_data'].get('username', 'Unknown User')}", "Logout"],
+                icons=["person", "box-arrow-right"],
                 menu_icon="person-circle",
                 default_index=0,
             )
 
+            # Handle logout option
             if user_action == "Logout":
                 logout()
-            elif user_action == "My Orgs":
-                my_orgs()
-                
+
             # Show options for authenticated users
             selected_section = option_menu(
                 "Sections",
@@ -196,7 +164,6 @@ def main():
                 menu_icon="menu-app",
                 default_index=0,
             )
-
         else:
             # Show login/register for non-authenticated users
             selected_section = option_menu(
@@ -209,7 +176,7 @@ def main():
 
     # Main Content Area
     if st.session_state["is_authenticated"]:
-        # Handle authenticated user modules based on selected section
+        # Handle authenticated user modules
         if selected_section == "Salesforce Tools":
             selected_tool = option_menu(
                 "Salesforce Tools",
@@ -285,6 +252,8 @@ def main():
             )
             if selected_setting == "How to Use":
                 show_how_to_use()
+            elif selected_setting == "Logout":
+                logout()
 
     else:
         # Handle non-authenticated user modules
@@ -294,6 +263,7 @@ def main():
             register()
         elif selected_section == "How to Use":
             show_how_to_use()
+
 
 if __name__ == "__main__":
     initialize_session()

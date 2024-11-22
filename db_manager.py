@@ -7,7 +7,6 @@ DB_FILE = "app_database.db"
 
 # Initialize the database and create tables if they don't exist
 def init_db():
-    """ Initialize the database and create tables if they don't exist. """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -19,24 +18,22 @@ def init_db():
             client_id TEXT,
             client_secret TEXT,
             domain TEXT,
-            pin TEXT NOT NULL,
-            name TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL
+            pin TEXT NOT NULL
         )
     """)
     conn.commit()
     conn.close()
 
 # Add a new user to the database
-def register_user(username, password, security_token, client_id, client_secret, domain, pin, name, email):
+def register_user(username, password, security_token, client_id, client_secret, domain, pin):
     password_hash = bcrypt.hash(password)
     try:
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO users (username, password_hash, security_token, client_id, client_secret, domain, pin, name, email)
-            VALUES (?, ?, ?, ?, ?, ?, ?,?,?)
-        """, (username, password_hash, security_token, client_id, client_secret, domain, pin, name, email))
+            INSERT INTO users (username, password_hash, security_token, client_id, client_secret, domain, pin)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (username, password_hash, security_token, client_id, client_secret, domain, pin))
         conn.commit()
         conn.close()
         return True
@@ -61,7 +58,7 @@ def get_user_data(username):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT username, security_token, client_id, client_secret, domain, pin, name, email
+        SELECT username, security_token, client_id, client_secret, domain, pin
         FROM users WHERE username = ?
     """, (username,))
     user_data = cursor.fetchone()
@@ -73,42 +70,6 @@ def get_user_data(username):
             "client_id": user_data[2],
             "client_secret": user_data[3],
             "domain": user_data[4],
-            "pin": user_data[5],
-            "name": user_data[6],
-            "email": user_data[7]
+            "pin": user_data[5]
         }
-    return None
-
-def get_user_orgs(email):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT username, domain FROM users WHERE email = ?", (email,))
-    return cursor.fetchall()
-
-def get_user_data_by_username(username):
-    """ Fetch user data by username. """
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    try:
-        cursor.execute("""
-            SELECT username, password_hash, security_token, client_id, client_secret,
-                   domain, pin, name, email
-            FROM users WHERE username = ?
-        """, (username,))
-        user_data = cursor.fetchone()
-        if user_data:
-            return {
-                "username": user_data[0],
-                "password_hash": user_data[1],
-                "security_token": user_data[2],
-                "client_id": user_data[3],
-                "client_secret": user_data[4],
-                "domain": user_data[5],
-                "pin": user_data[6],
-                "name": user_data[7],
-                "email": user_data[8]
-            }
-    finally:
-        conn.close()
-
     return None
