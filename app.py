@@ -175,7 +175,7 @@ def main():
             if user_action == "Logout":
                 logout()
             elif user_action == "My Orgs":
-                my_orgs()
+                my_orgs(st.session_state["salesforce"])
 
             # Show options for authenticated users
             selected_section = option_menu(
