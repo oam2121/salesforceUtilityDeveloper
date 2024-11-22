@@ -117,7 +117,7 @@ def login():
             cookies.save()
 
             st.success("Login successful!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Invalid username, password, or PIN.")
 
@@ -127,14 +127,31 @@ def my_orgs():
     user_data = st.session_state.get("user_data")
     if user_data:
         orgs = get_user_orgs(user_data["email"])
-        for org_username, org_domain in orgs:
-            login_button = st.button(f"Login to {org_username} @ {org_domain}")
-            if login_button:
-                if st.session_state.get("salesforce_username") != org_username:
-                    st.session_state["salesforce"] = None  # Clear current session
-                    st.warning("You will be logged out from this org.")
-                    st.session_state["user_data"] = get_user_data_by_username(org_username)
-                    login()  # Call login function to re-authenticate with new org details
+        if orgs:
+            for org_username, org_domain in orgs:
+                login_button = st.button(f"Login to {org_username} @ {org_domain}")
+                if login_button:
+                    # Check if user is trying to re-login to the same org
+                    if st.session_state.get("salesforce_username") == org_username:
+                        st.info("You are already logged into this org.")
+                        continue
+
+                    # Clear current Salesforce session safely
+                    if st.session_state.get("salesforce_username") != org_username:
+                        st.session_state["salesforce"] = None
+                        st.session_state.pop("salesforce_username", None)  # Safely remove the username from session state
+                        st.warning("You will be logged out from the current org.")
+
+                    # Re-fetch user data and initiate new session
+                    updated_user_data = get_user_data_by_username(org_username)
+                    if updated_user_data:
+                        st.session_state["user_data"] = updated_user_data
+                        st.session_state["salesforce_username"] = org_username  # Update session username
+                        login()  # Re-authenticate and setup new Salesforce session
+                    else:
+                        st.error("Failed to retrieve user data for the selected org.")
+        else:
+            st.error("No organizations found for this email.")
 
 # Logout Function
 def logout():
