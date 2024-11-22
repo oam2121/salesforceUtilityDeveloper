@@ -7,6 +7,7 @@ DB_FILE = "app_database.db"
 
 # Initialize the database and create tables if they don't exist
 def init_db():
+    """ Initialize the database and create tables if they don't exist. """
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute("""
@@ -18,7 +19,7 @@ def init_db():
             client_id TEXT,
             client_secret TEXT,
             domain TEXT,
-            pin TEXT NOT NULL
+            pin TEXT NOT NULL,
             name TEXT NOT NULL,
             email TEXT UNIQUE NOT NULL
         )
